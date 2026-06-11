@@ -20,7 +20,7 @@ function toBase64url(buf: ArrayBuffer): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function fromBase64url(value: string): Uint8Array | null {
+function fromBase64url(value: string): Uint8Array<ArrayBuffer> | null {
   if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
   const base64 =
     value.replace(/-/g, "+").replace(/_/g, "/") +
