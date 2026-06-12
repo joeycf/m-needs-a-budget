@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatMonthLabel,
   formatRegisterDate,
   mobileDateLabel,
   parseRegisterDate,
@@ -35,6 +36,13 @@ describe("parseRegisterDate", () => {
     expect(parseRegisterDate("2026-02-30")).toBeNull();
     expect(parseRegisterDate("yesterday")).toBeNull();
     expect(parseRegisterDate("")).toBeNull();
+  });
+});
+
+describe("formatMonthLabel", () => {
+  it("formats budget months as full month + year", () => {
+    expect(formatMonthLabel("2026-06-01")).toBe("June 2026");
+    expect(formatMonthLabel("2025-12-01")).toBe("December 2025");
   });
 });
 

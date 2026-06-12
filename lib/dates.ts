@@ -26,6 +26,11 @@ export function parseRegisterDate(input: string): string | null {
   return null;
 }
 
+/** Budget month switcher label: "2026-06-01" → "June 2026". */
+export function formatMonthLabel(month: string): string {
+  return format(parseISO(month), "MMMM yyyy");
+}
+
 /** Mobile register group label: Today / Yesterday / "June 9"
  *  (with year when not the current year). */
 export function mobileDateLabel(iso: string, today: string = todayISO()): string {
