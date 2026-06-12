@@ -1,0 +1,41 @@
+<!-- @dsCard group="Components" viewport="700x170" subtitle="Buttons, inputs, inline cell edit, menu" name="Controls" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: var(--bg-app); display: flex; gap: 24px; align-items: flex-start; }
+  .group { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  h4 { margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+  .cellwrap { width: 110px; }
+</style>
+</head>
+<body>
+  <div class="group">
+    <h4>Buttons</h4>
+    <div class="row">
+      <button class="btn btn-primary">Assign</button>
+      <button class="btn btn-secondary">Reconcile</button>
+      <button class="btn btn-ghost">Cancel</button>
+      <button class="btn btn-danger">Delete</button>
+      <button class="btn btn-primary" disabled>Save</button>
+    </div>
+    <h4 style="margin-top: 8px;">Inputs</h4>
+    <div class="row">
+      <input class="input" placeholder="Search transactions…" style="width: 180px;">
+      <div class="cellwrap"><input class="input-cell" value="120.00"></div>
+    </div>
+  </div>
+  <div class="group">
+    <h4>Menu</h4>
+    <div class="menu">
+      <div class="menu-item"><span>Underfunded</span><span class="num" style="color: var(--text-secondary);">$240.00</span></div>
+      <div class="menu-item"><span>Assigned last month</span><span class="num" style="color: var(--text-secondary);">$185.00</span></div>
+      <div class="menu-item"><span>Spent last month</span><span class="num" style="color: var(--text-secondary);">$203.40</span></div>
+      <div class="menu-item"><span>Reset to $0.00</span></div>
+    </div>
+  </div>
+</body>
+</html>

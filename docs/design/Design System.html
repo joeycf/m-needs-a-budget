@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M Needs A Budget — Design System</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { margin: 0; background: var(--bg-app); padding: 40px; }
+  .page { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  header h1 { font-size: var(--text-xl); font-weight: 700; margin: 0 0 4px; }
+  header p { margin: 0; color: var(--text-secondary); font-size: var(--text-base); max-width: 560px; }
+  section h2 { font-size: var(--text-md); font-weight: 600; margin: 0 0 4px; }
+  section .sub { font-size: var(--text-sm); color: var(--text-secondary); margin: 0 0 12px; }
+  .panel { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; }
+
+  /* swatches */
+  .swrow { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
+  .sw { height: 48px; border-radius: 4px; border: 1px solid rgba(27,30,34,0.08); display: flex; align-items: flex-end; padding: 4px 6px; box-sizing: border-box; }
+  .sw span { font-size: 10px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .sw.dark span { color: rgba(255,255,255,0.75); }
+  .accentrow { display: flex; gap: 6px; margin-top: 6px; }
+  .accentrow .sw { flex: 1; }
+
+  .states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .state { border-radius: 6px; padding: 10px 12px; }
+  .state b { font-size: 12px; font-weight: 600; display: block; }
+  .state .amt { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .state span { font-size: 10px; opacity: 0.85; }
+
+  .typespec { display: grid; grid-template-columns: 170px 1fr; gap: 6px 16px; align-items: baseline; }
+  .tok { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  h4.mini { margin: 0 0 8px; font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--text-secondary); }
+  .tablewrap { border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
+  .activity { color: var(--text-secondary); cursor: pointer; }
+  .activity:hover { color: var(--accent); text-decoration: underline; }
+  ul.rules { font-size: var(--text-table); color: var(--text-secondary); line-height: 1.7; margin: 0; padding-left: 18px; }
+  .rta-banner { width: 300px; justify-content: space-between; }
+  .rtastack { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>M Needs A Budget — design system</h1>
+    <p>A spreadsheet you trust, not a marketing site. Light mode, cool neutrals, one deep teal accent, four semantic money states reused everywhere. Compact density, tabular numerals on every figure.</p>
+  </header>
+
+  <section>
+    <h2>Neutrals</h2>
+    <p class="sub">Cool grays carry all surfaces, borders, and text. Borders over shadows.</p>
+    <div class="panel">
+      <div class="swrow">
+        <div class="sw" style="background: var(--gray-0)"><span>0</span></div>
+        <div class="sw" style="background: var(--gray-25)"><span>25</span></div>
+        <div class="sw" style="background: var(--gray-50)"><span>50</span></div>
+        <div class="sw" style="background: var(--gray-100)"><span>100</span></div>
+        <div class="sw" style="background: var(--gray-200)"><span>200</span></div>
+        <div class="sw" style="background: var(--gray-300)"><span>300</span></div>
+        <div class="sw dark" style="background: var(--gray-400)"><span>400</span></div>
+        <div class="sw dark" style="background: var(--gray-500)"><span>500</span></div>
+        <div class="sw dark" style="background: var(--gray-600)"><span>600</span></div>
+        <div class="sw dark" style="background: var(--gray-700)"><span>700</span></div>
+        <div class="sw dark" style="background: var(--gray-800)"><span>800</span></div>
+        <div class="sw dark" style="background: var(--gray-900)"><span>900</span></div>
+      </div>
+      <div class="accentrow">
+        <div class="sw" style="background: var(--teal-50)"><span>teal-50</span></div>
+        <div class="sw" style="background: var(--teal-100)"><span>teal-100</span></div>
+        <div class="sw" style="background: var(--teal-300)"><span>teal-300</span></div>
+        <div class="sw dark" style="background: var(--teal-600)"><span>teal-600 · accent</span></div>
+        <div class="sw dark" style="background: var(--teal-700)"><span>teal-700 · hover</span></div>
+        <div class="sw dark" style="background: var(--teal-800)"><span>teal-800 · active</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Semantic money states</h2>
+    <p class="sub">The same four pairs color Available pills, the RTA banner, and report legends. Teal is never a money state.</p>
+    <div class="panel">
+      <div class="states">
+        <div class="state" style="background: var(--funded-bg); color: var(--funded-fg);"><b>funded</b><div class="amt">$245.00</div><span>available &gt; 0</span></div>
+        <div class="state" style="background: var(--credit-overspent-bg); color: var(--credit-overspent-fg);"><b>credit-overspent</b><div class="amt">−$38.50</div><span>overspent on credit</span></div>
+        <div class="state" style="background: var(--cash-overspent-bg); color: var(--cash-overspent-fg);"><b>cash-overspent</b><div class="amt">−$112.19</div><span>overspent with cash</span></div>
+        <div class="state" style="background: var(--zero-bg); color: var(--zero-fg);"><b>zero</b><div class="amt">$0.00</div><span>exactly zero</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ready to Assign banner</h2>
+    <p class="sub">Solid fills from the semantic set: green &gt; 0, red &lt; 0, gray = 0.</p>
+    <div class="panel rtastack">
+      <div class="rta-banner rta-banner--positive">
+        <div><div class="rta-amount num">$412.83</div><div class="rta-label">Ready to Assign</div></div>
+        <button class="btn btn-secondary">Assign ▾</button>
+      </div>
+      <div class="rta-banner rta-banner--negative">
+        <div><div class="rta-amount num">−$86.20</div><div class="rta-label">Ready to Assign</div></div>
+        <button class="btn btn-secondary">Fix ▾</button>
+      </div>
+      <div class="rta-banner rta-banner--zero">
+        <div><div class="rta-amount num">$0.00</div><div class="rta-label">All money assigned</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Type</h2>
+    <p class="sub">Inter only. 13px is the table workhorse; 11px uppercase column headers.</p>
+    <div class="panel typespec">
+      <div class="tok">--text-xl · 22/700</div><div style="font-size: var(--text-xl); font-weight: 700;">June 2026</div>
+      <div class="tok">--text-lg · 18/600</div><div style="font-size: var(--text-lg); font-weight: 600;">Net worth</div>
+      <div class="tok">--text-md · 16/600</div><div style="font-size: var(--text-md); font-weight: 600;">Immediate obligations</div>
+      <div class="tok">--text-base · 14/400</div><div style="font-size: var(--text-base);">Move money from another category to cover this.</div>
+      <div class="tok">--text-table · 13/400</div><div style="font-size: var(--text-table);">Groceries · Verified payee · $1,234.56</div>
+      <div class="tok">--text-sm · 12/400</div><div style="font-size: var(--text-sm); color: var(--text-secondary);">Last reconciled 14 days ago</div>
+      <div class="tok">.th-caps · 11/600</div><div class="th-caps">Assigned</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Money formatting</h2>
+    <div class="panel cols2">
+      <div>
+        <h4 class="mini">Columns align with .num</h4>
+        <div style="width: 150px; font-size: var(--text-table);">
+          <div class="num" style="padding: 2px 0; border-bottom: 1px solid var(--border-row);">$1,234.56</div>
+          <div class="num" style="padding: 2px 0; border-bottom: 1px solid var(--border-row);">$87.20</div>
+          <div class="num amount-inflow" style="padding: 2px 0; border-bottom: 1px solid var(--border-row);">$3,500.00</div>
+          <div class="num" style="padding: 2px 0; border-bottom: 1px solid var(--border-row); color: var(--cash-overspent-fg);">−$112.19</div>
+          <div class="num" style="padding: 2px 0; color: var(--text-muted);">$0.00</div>
+        </div>
+      </div>
+      <div>
+        <h4 class="mini">Rules</h4>
+        <ul class="rules">
+          <li>Always <strong>$1,234.56</strong> — two decimals, comma groups, tabular numerals</li>
+          <li>True minus sign (−), never a hyphen</li>
+          <li>Inflows may tint green; outflows stay plain dark</li>
+          <li>Red means <em>overspent</em>, never ordinary spending</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Controls</h2>
+    <p class="sub">28px compact controls, 4px radius, teal focus ring. Keyboard-first: Enter saves, Esc cancels.</p>
+    <div class="panel cols2">
+      <div>
+        <h4 class="mini">Buttons</h4>
+        <div class="row" style="margin-bottom: 16px;">
+          <button class="btn btn-primary">Assign</button>
+          <button class="btn btn-secondary">Reconcile</button>
+          <button class="btn btn-ghost">Cancel</button>
+          <button class="btn btn-danger">Delete</button>
+          <button class="btn btn-primary" disabled>Save</button>
+        </div>
+        <h4 class="mini">Inputs &amp; inline cell edit</h4>
+        <div class="row">
+          <input class="input" placeholder="Search transactions…" style="width: 180px;">
+          <span style="width: 110px; display: inline-block;"><input class="input-cell" value="120.00"></span>
+        </div>
+      </div>
+      <div>
+        <h4 class="mini">Quick-assign menu</h4>
+        <div class="menu" style="display: inline-block;">
+          <div class="menu-item"><span>Underfunded</span><span class="num" style="color: var(--text-secondary);">$240.00</span></div>
+          <div class="menu-item"><span>Assigned last month</span><span class="num" style="color: var(--text-secondary);">$185.00</span></div>
+          <div class="menu-item"><span>Spent last month</span><span class="num" style="color: var(--text-secondary);">$203.40</span></div>
+          <div class="menu-item"><span>Reset to $0.00</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Budget grid</h2>
+    <p class="sub">32px rows, group rows at 36px, pills carry the four states. Activity is a link to that month's transactions.</p>
+    <div class="tablewrap">
+      <table class="mnab-table">
+        <thead>
+          <tr><th style="width: 40%;">Category</th><th class="num" style="width: 20%;">Assigned</th><th class="num" style="width: 20%;">Activity</th><th class="num" style="width: 20%;">Available</th></tr>
+        </thead>
+        <tbody>
+          <tr class="group-row"><td>▾ Immediate obligations</td><td class="num">$2,450.00</td><td class="num">−$1,872.44</td><td class="num">$577.56</td></tr>
+          <tr><td>Groceries</td><td class="num">$600.00</td><td class="num activity">−$355.00</td><td class="num"><span class="pill pill--funded">$245.00</span></td></tr>
+          <tr><td>Dining out</td><td class="num">$150.00</td><td class="num activity">−$188.50</td><td class="num"><span class="pill pill--credit">−$38.50</span></td></tr>
+          <tr><td>Transport</td><td class="num">$80.00</td><td class="num activity">−$192.19</td><td class="num"><span class="pill pill--cash">−$112.19</span></td></tr>
+          <tr><td>Internet</td><td class="num">$70.00</td><td class="num activity">−$70.00</td><td class="num"><span class="pill pill--zero">$0.00</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Register</h2>
+    <p class="sub">Same density; cleared ✓ toggles green/gray; selection tints teal.</p>
+    <div class="tablewrap">
+      <table class="mnab-table">
+        <thead>
+          <tr><th>Date</th><th>Payee</th><th>Category</th><th>Memo</th><th class="num">Outflow</th><th class="num">Inflow</th><th style="text-align: center;">✓</th></tr>
+        </thead>
+        <tbody>
+          <tr class="is-selected"><td class="num" style="text-align: left;">06/10/2026</td><td>Trader Joe's</td><td>Groceries</td><td style="color: var(--text-secondary);">weekly run</td><td class="num">$84.12</td><td class="num"></td><td style="text-align: center;"><span class="cleared-check">✓</span></td></tr>
+          <tr><td class="num" style="text-align: left;">06/09/2026</td><td>Acme Payroll</td><td>Ready to Assign</td><td></td><td class="num"></td><td class="num amount-inflow">$3,500.00</td><td style="text-align: center;"><span class="cleared-check">✓</span></td></tr>
+          <tr><td class="num" style="text-align: left;">06/08/2026</td><td>Shell</td><td>Transport</td><td></td><td class="num">$42.07</td><td class="num"></td><td style="text-align: center;"><span class="uncleared-check">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dark theme</h2>
+    <p class="sub">Apply <code>data-theme="dark"</code> to any subtree. Near-black app background, dark gray cards, light text; teal brightens one step; the four money states become tinted fills with high-contrast text.</p>
+    <div class="panel darkpanel" data-theme="dark" style="background: var(--bg-app); border-color: var(--border-default); display: flex; flex-direction: column; gap: 16px; color: var(--text-primary);">
+      <div class="swrow">
+        <div class="sw dark" style="background: var(--gray-50); border-color: rgba(255,255,255,0.08);"><span>50 · app bg</span></div>
+        <div class="sw dark" style="background: var(--gray-0); border-color: rgba(255,255,255,0.08);"><span>0 · surface</span></div>
+        <div class="sw dark" style="background: var(--gray-25); border-color: rgba(255,255,255,0.08);"><span>25 · raised</span></div>
+        <div class="sw dark" style="background: var(--gray-100); border-color: rgba(255,255,255,0.08);"><span>100 · group</span></div>
+        <div class="sw dark" style="background: var(--gray-200); border-color: rgba(255,255,255,0.08);"><span>200 · border</span></div>
+        <div class="sw dark" style="background: var(--gray-300); border-color: rgba(255,255,255,0.08);"><span>300</span></div>
+        <div class="sw dark" style="background: var(--gray-400); border-color: rgba(255,255,255,0.08);"><span>400 · muted</span></div>
+        <div class="sw dark" style="background: var(--gray-600); border-color: rgba(255,255,255,0.08);"><span>600 · 2nd</span></div>
+        <div class="sw" style="background: var(--gray-900); border-color: rgba(255,255,255,0.08);"><span style="color: rgba(0,0,0,0.6);">900 · text</span></div>
+        <div class="sw dark" style="background: var(--teal-600); border-color: rgba(255,255,255,0.08);"><span>accent</span></div>
+        <div class="sw dark" style="background: var(--teal-50); border-color: rgba(255,255,255,0.08);"><span>selection</span></div>
+        <div class="sw" style="background: var(--teal-800); border-color: rgba(255,255,255,0.08);"><span style="color: rgba(0,0,0,0.6);">teal-800</span></div>
+      </div>
+      <div class="states">
+        <div class="state" style="background: var(--funded-bg); color: var(--funded-fg);"><b>funded</b><div class="amt">$245.00</div><span>available &gt; 0</span></div>
+        <div class="state" style="background: var(--credit-overspent-bg); color: var(--credit-overspent-fg);"><b>credit-overspent</b><div class="amt">−$38.50</div><span>overspent on credit</span></div>
+        <div class="state" style="background: var(--cash-overspent-bg); color: var(--cash-overspent-fg);"><b>cash-overspent</b><div class="amt">−$112.19</div><span>overspent with cash</span></div>
+        <div class="state" style="background: var(--zero-bg); color: var(--zero-fg);"><b>zero</b><div class="amt">$0.00</div><span>exactly zero</span></div>
+      </div>
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <span class="pill pill--funded num">$245.00</span>
+        <span class="pill pill--credit num">−$38.50</span>
+        <span class="pill pill--cash num">−$112.19</span>
+        <span class="pill pill--zero num">$0.00</span>
+        <div style="flex: 1;"></div>
+        <button class="btn btn-primary">Assign</button>
+        <button class="btn btn-secondary">Reconcile</button>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <div class="rta-banner rta-banner--positive" style="flex: 1;"><div><div class="rta-amount num">$412.83</div><div class="rta-label">Ready to Assign</div></div></div>
+        <div class="rta-banner rta-banner--negative" style="flex: 1;"><div><div class="rta-amount num">−$86.20</div><div class="rta-label">Ready to Assign</div></div></div>
+        <div class="rta-banner rta-banner--zero" style="flex: 1;"><div><div class="rta-amount num">$0.00</div><div class="rta-label">All money assigned</div></div></div>
+      </div>
+      <div class="tablewrap" style="border-color: var(--border-default);">
+        <table class="mnab-table">
+          <thead>
+            <tr><th style="width: 40%;">Category</th><th class="num" style="width: 20%;">Assigned</th><th class="num" style="width: 20%;">Activity</th><th class="num" style="width: 20%;">Available</th></tr>
+          </thead>
+          <tbody>
+            <tr class="group-row"><td>▾ Immediate obligations</td><td class="num">$2,450.00</td><td class="num">−$1,872.44</td><td class="num">$577.56</td></tr>
+            <tr><td>Groceries</td><td class="num">$600.00</td><td class="num activity">−$355.00</td><td class="num"><span class="pill pill--funded">$245.00</span></td></tr>
+            <tr><td>Dining out</td><td class="num">$150.00</td><td class="num activity">−$188.50</td><td class="num"><span class="pill pill--credit">−$38.50</span></td></tr>
+            <tr><td>Transport</td><td class="num">$80.00</td><td class="num activity">−$192.19</td><td class="num"><span class="pill pill--cash">−$112.19</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

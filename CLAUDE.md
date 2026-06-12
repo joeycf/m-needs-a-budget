@@ -38,6 +38,7 @@ Next.js App Router + TypeScript (strict mode), Tailwind + shadcn/ui, Drizzle ORM
 6. Validate every server-action input with Zod; never trust client values.
 7. Don't add dependencies without asking. Don't edit already-applied migration files — create new migrations.
 8. Split-transaction subtransaction amounts must sum exactly to the parent amount (enforce in the action).
+9. **All UI must follow the design handoff in `docs/design/`.** Use the tokens in Design System.html (dark theme is the only theme) and match the relevant screen file. If a screen has no design file, ask before inventing styling.
 
 ## Workflow
 

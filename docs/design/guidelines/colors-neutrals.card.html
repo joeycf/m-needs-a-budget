@@ -1,0 +1,36 @@
+<!-- @dsCard group="Colors" viewport="700x130" subtitle="Cool neutral grays — surfaces, borders, text" name="Neutrals" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; }
+  .row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
+  .sw { height: 56px; border-radius: 4px; border: 1px solid rgba(27,30,34,0.08); display: flex; align-items: flex-end; padding: 4px 6px; box-sizing: border-box; }
+  .sw span { font-size: 10px; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  .sw.dark span { color: rgba(255,255,255,0.75); }
+  .labels { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-top: 6px; }
+  .labels div { font-size: 10px; color: var(--text-muted); text-align: center; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw" style="background: var(--gray-0)"><span>0</span></div>
+    <div class="sw" style="background: var(--gray-25)"><span>25</span></div>
+    <div class="sw" style="background: var(--gray-50)"><span>50</span></div>
+    <div class="sw" style="background: var(--gray-100)"><span>100</span></div>
+    <div class="sw" style="background: var(--gray-200)"><span>200</span></div>
+    <div class="sw" style="background: var(--gray-300)"><span>300</span></div>
+    <div class="sw dark" style="background: var(--gray-400)"><span>400</span></div>
+    <div class="sw dark" style="background: var(--gray-500)"><span>500</span></div>
+    <div class="sw dark" style="background: var(--gray-600)"><span>600</span></div>
+    <div class="sw dark" style="background: var(--gray-700)"><span>700</span></div>
+    <div class="sw dark" style="background: var(--gray-800)"><span>800</span></div>
+    <div class="sw dark" style="background: var(--gray-900)"><span>900</span></div>
+  </div>
+  <div class="labels">
+    <div>surface</div><div>raised</div><div>app bg</div><div>group row</div><div>border</div><div>border-strong</div><div>muted</div><div>secondary</div><div></div><div></div><div></div><div>text</div>
+  </div>
+</body>
+</html>

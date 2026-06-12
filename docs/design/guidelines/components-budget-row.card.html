@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" viewport="700x230" subtitle="Budget grid density — group row, category rows, all four pill states" name="Budget table sample" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 12px; background: var(--bg-app); }
+  .wrap { border: 1px solid var(--border-default); border-radius: 6px; overflow: hidden; background: #fff; }
+  td.cat { width: 40%; }
+  td.numcol, th.numcol { width: 20%; }
+  .activity { color: var(--text-secondary); cursor: pointer; }
+  .activity:hover { color: var(--accent); text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <table class="mnab-table">
+      <thead>
+        <tr><th>Category</th><th class="num numcol">Assigned</th><th class="num numcol">Activity</th><th class="num numcol">Available</th></tr>
+      </thead>
+      <tbody>
+        <tr class="group-row"><td>▾ Immediate obligations</td><td class="num">$2,450.00</td><td class="num">−$1,872.44</td><td class="num">$577.56</td></tr>
+        <tr><td class="cat">Groceries</td><td class="num">$600.00</td><td class="num activity">−$355.00</td><td class="num"><span class="pill pill--funded">$245.00</span></td></tr>
+        <tr><td class="cat">Dining out</td><td class="num">$150.00</td><td class="num activity">−$188.50</td><td class="num"><span class="pill pill--credit">−$38.50</span></td></tr>
+        <tr><td class="cat">Transport</td><td class="num">$80.00</td><td class="num activity">−$192.19</td><td class="num"><span class="pill pill--cash">−$112.19</span></td></tr>
+        <tr><td class="cat">Internet</td><td class="num">$70.00</td><td class="num activity">−$70.00</td><td class="num"><span class="pill pill--zero">$0.00</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

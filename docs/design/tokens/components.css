@@ -1,0 +1,178 @@
+/* M Needs A Budget — reusable component classes
+   Spreadsheet feel: compact, bordered, quiet. */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-table);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.btn-primary { background: var(--accent); color: var(--text-on-fill); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:active { background: var(--accent-active); }
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.btn-secondary:hover { background: var(--gray-50); }
+[data-theme="dark"] .btn-secondary:hover { background: var(--gray-100); }
+
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--gray-100); color: var(--text-primary); }
+
+.btn-danger { background: var(--cash-overspent-strong); color: var(--text-on-fill); }
+.btn-danger:hover { background: #a93226; }
+
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ---------- Inputs ---------- */
+.input {
+  height: var(--control-h);
+  padding: 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-table);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.input::placeholder { color: var(--text-muted); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+
+/* Inline cell editing (Assigned column, register rows) */
+.input-cell {
+  height: 24px;
+  width: 100%;
+  padding: 0 4px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--bg-surface);
+}
+.input-cell:focus { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---------- Available pills ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-table);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.pill--funded { background: var(--funded-bg); color: var(--funded-fg); }
+.pill--credit { background: var(--credit-overspent-bg); color: var(--credit-overspent-fg); }
+.pill--cash   { background: var(--cash-overspent-bg); color: var(--cash-overspent-fg); }
+.pill--zero   { background: var(--zero-bg); color: var(--zero-fg); }
+.pill:hover { box-shadow: inset 0 0 0 1px rgba(27, 30, 34, 0.18); }
+
+/* ---------- RTA banner ---------- */
+.rta-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--text-on-fill);
+}
+.rta-banner--positive { background: var(--rta-positive); }
+.rta-banner--negative { background: var(--rta-negative); }
+.rta-banner--zero { background: var(--rta-zero); }
+.rta-banner .rta-amount {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rta-banner .rta-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+/* ---------- Tables ---------- */
+.mnab-table { width: 100%; border-collapse: collapse; background: var(--bg-surface); }
+.mnab-table th {
+  height: 28px;
+  padding: 0 var(--cell-pad-x);
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-default);
+}
+.mnab-table td {
+  height: var(--row-h);
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  font-size: var(--text-table);
+  border-bottom: 1px solid var(--border-row);
+}
+.mnab-table tbody tr:hover { background: var(--bg-hover); }
+.mnab-table tr.is-selected { background: var(--bg-selected); }
+.mnab-table th.num, .mnab-table td.num { text-align: right; }
+
+/* Category-group header row */
+.mnab-table tr.group-row td {
+  height: var(--row-h-group);
+  background: var(--gray-100);
+  font-weight: 600;
+  font-size: var(--text-table);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* ---------- Cards / panels / menus ---------- */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.menu {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-menu);
+  padding: var(--space-1);
+  min-width: 220px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-2);
+  font-size: var(--text-table);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.menu-item:hover { background: var(--gray-100); }
+
+/* ---------- Misc ---------- */
+.cleared-check { color: var(--funded-strong); font-weight: 700; cursor: pointer; }
+.uncleared-check { color: var(--text-muted); font-weight: 700; cursor: pointer; }
+.amount-inflow { color: var(--inflow); }

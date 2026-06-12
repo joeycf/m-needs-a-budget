@@ -1,0 +1,29 @@
+<!-- @dsCard group="Colors" viewport="700x150" subtitle="The four money states — reused on pills, banners, reports" name="Semantic money states" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .state { border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .state b { font-size: 12px; font-weight: 600; }
+  .state .amt { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .state span { font-size: 10px; opacity: 0.85; }
+</style>
+</head>
+<body>
+  <div class="state" style="background: var(--funded-bg); color: var(--funded-fg);">
+    <b>funded</b><div class="amt">$245.00</div><span>available &gt; 0</span>
+  </div>
+  <div class="state" style="background: var(--credit-overspent-bg); color: var(--credit-overspent-fg);">
+    <b>credit-overspent</b><div class="amt">−$38.50</div><span>overspent on credit</span>
+  </div>
+  <div class="state" style="background: var(--cash-overspent-bg); color: var(--cash-overspent-fg);">
+    <b>cash-overspent</b><div class="amt">−$112.19</div><span>overspent with cash</span>
+  </div>
+  <div class="state" style="background: var(--zero-bg); color: var(--zero-fg);">
+    <b>zero</b><div class="amt">$0.00</div><span>exactly zero</span>
+  </div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!-- @dsCard group="Colors" viewport="700x230" subtitle="data-theme=dark — flipped neutrals, rebalanced money states" name="Dark theme" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #141619; color: var(--text-primary); display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .rta-banner { flex: 1; }
+  .lab { font-size: 10px; color: var(--text-muted); }
+</style>
+</head>
+<body data-theme="dark">
+  <div class="row">
+    <span class="pill pill--funded num">$245.00</span>
+    <span class="pill pill--credit num">−$38.50</span>
+    <span class="pill pill--cash num">−$112.19</span>
+    <span class="pill pill--zero num">$0.00</span>
+    <div style="flex: 1;"></div>
+    <button class="btn btn-primary">Assign</button>
+    <button class="btn btn-secondary">Reconcile</button>
+  </div>
+  <div class="row">
+    <div class="rta-banner rta-banner--positive"><div><div class="rta-amount num">$412.83</div><div class="rta-label">Ready to Assign</div></div></div>
+    <div class="rta-banner rta-banner--negative"><div><div class="rta-amount num">−$86.20</div><div class="rta-label">Ready to Assign</div></div></div>
+    <div class="rta-banner rta-banner--zero"><div><div class="rta-amount num">$0.00</div><div class="rta-label">All assigned</div></div></div>
+  </div>
+  <div style="border: 1px solid var(--border-default); border-radius: 6px; overflow: hidden;">
+    <table class="mnab-table">
+      <tbody>
+        <tr class="group-row"><td>▾ Immediate obligations</td><td class="num">$2,450.00</td><td class="num"><span class="pill pill--funded">$577.56</span></td></tr>
+        <tr><td>Groceries</td><td class="num">$600.00</td><td class="num"><span class="pill pill--funded">$245.00</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

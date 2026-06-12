@@ -1,0 +1,24 @@
+<!-- @dsCard group="Colors" viewport="700x120" subtitle="Deep teal — the only non-semantic accent" name="Accent" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; display: flex; gap: 6px; align-items: stretch; }
+  .sw { flex: 1; height: 72px; border-radius: 4px; border: 1px solid rgba(27,30,34,0.08); display: flex; flex-direction: column; justify-content: flex-end; padding: 6px 8px; box-sizing: border-box; }
+  .sw b { font-size: 11px; font-weight: 600; }
+  .sw span { font-size: 10px; font-variant-numeric: tabular-nums; opacity: 0.8; }
+  .light { color: var(--teal-800); }
+  .dark { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="sw light" style="background: var(--teal-50)"><b>50</b><span>selection bg</span></div>
+  <div class="sw light" style="background: var(--teal-100)"><b>100</b><span>focus ring</span></div>
+  <div class="sw light" style="background: var(--teal-300)"><b>300</b><span></span></div>
+  <div class="sw dark" style="background: var(--teal-600)"><b>600 · accent</b><span>#15756a</span></div>
+  <div class="sw dark" style="background: var(--teal-700)"><b>700</b><span>hover</span></div>
+  <div class="sw dark" style="background: var(--teal-800)"><b>800</b><span>active</span></div>
+</body>
+</html>

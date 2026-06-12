@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App Shell — M Needs A Budget</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" data-presets="react">
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "sidebarTone": "light",
+  "sidebarWidth": 240,
+  "theme": "dark"
+}/*EDITMODE-END*/;
+
+/* ---------------- Data ---------------- */
+
+const budgetAccounts = [
+  { name: "Checking", balance: "$4,812.33", neg: false },
+  { name: "Savings", balance: "$12,250.00", neg: false },
+  { name: "Chase Sapphire", balance: "\u2212$638.50", neg: true },
+];
+const trackingAccounts = [
+  { name: "Brokerage", balance: "$48,920.11", neg: false },
+  { name: "401(k)", balance: "$86,114.92", neg: false },
+  { name: "Car loan", balance: "\u2212$11,438.27", neg: true },
+];
+
+/* ---------------- Sidebar ---------------- */
+
+function sidebarTheme(tone) {
+  if (tone === "dark") {
+    return {
+      bg: "#0c423c",
+      border: "rgba(255,255,255,0.10)",
+      text: "rgba(255,255,255,0.92)",
+      secondary: "rgba(255,255,255,0.55)",
+      muted: "rgba(255,255,255,0.40)",
+      neg: "#ffa399",
+      hover: "rgba(255,255,255,0.07)",
+      activeBg: "rgba(255,255,255,0.14)",
+      activeText: "#ffffff",
+      markBg: "#ffffff",
+      markText: "#0c423c",
+      btnBg: "transparent",
+      btnBorder: "rgba(255,255,255,0.35)",
+      btnText: "rgba(255,255,255,0.92)",
+    };
+  }
+  return {
+    bg: "var(--bg-surface)",
+    border: "var(--border-default)",
+    text: "var(--text-primary)",
+    secondary: "var(--text-secondary)",
+    muted: "var(--text-muted)",
+    neg: "var(--cash-overspent-fg)",
+    hover: "var(--gray-100)",
+    activeBg: "var(--teal-50)",
+    activeText: "var(--teal-800)",
+    markBg: "var(--accent)",
+    markText: "#ffffff",
+    btnBg: "var(--bg-surface)",
+    btnBorder: "var(--border-strong)",
+    btnText: "var(--text-primary)",
+  };
+}
+
+function NavItem({ label, active, theme, mobile }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex", alignItems: "center",
+        height: mobile ? 44 : 30,
+        padding: "0 10px",
+        borderRadius: "var(--radius-sm)",
+        fontSize: mobile ? 14 : 13,
+        fontWeight: active ? 600 : 500,
+        color: active ? theme.activeText : theme.text,
+        background: active ? theme.activeBg : hover ? theme.hover : "transparent",
+        cursor: "pointer",
+      }}
+    >{label}</div>
+  );
+}
+
+function AccountRow({ name, balance, neg, theme, mobile }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        height: mobile ? 40 : 28,
+        padding: "0 10px",
+        borderRadius: "var(--radius-sm)",
+        background: hover ? theme.hover : "transparent",
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ fontSize: 13, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+      <span className="num" style={{ fontSize: 12, color: neg ? theme.neg : theme.secondary, flexShrink: 0 }}>{balance}</span>
+    </div>
+  );
+}
+
+function SectionHeading({ label, total, theme }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 10px", marginBottom: 2 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "var(--tracking-caps)", color: theme.muted }}>{label}</span>
+      <span className="num" style={{ fontSize: 11, color: theme.muted }}>{total}</span>
+    </div>
+  );
+}
+
+function Sidebar({ tone, mobile, width }) {
+  const theme = sidebarTheme(tone);
+  return (
+    <div style={{
+      width: width, flexShrink: 0, height: "100%", boxSizing: "border-box",
+      background: theme.bg,
+      borderRight: "1px solid " + theme.border,
+      display: "flex", flexDirection: "column",
+      padding: "12px 8px",
+      fontFamily: "var(--font-ui)",
+    }}>
+      {/* Title */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px 12px" }}>
+        <div style={{
+          width: 24, height: 24, borderRadius: 5, background: theme.markBg, color: theme.markText,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, fontWeight: 700, flexShrink: 0,
+        }}>M</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, whiteSpace: "nowrap" }}>M Needs a Budget</div>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <NavItem label="Budget" active theme={theme} mobile={mobile} />
+        <NavItem label="Reports" theme={theme} mobile={mobile} />
+        <NavItem label="All Accounts" theme={theme} mobile={mobile} />
+      </nav>
+
+      {/* Accounts */}
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 1 }}>
+        <SectionHeading label="Budget" total="$16,423.83" theme={theme} />
+        {budgetAccounts.map((a) => <AccountRow key={a.name} {...a} theme={theme} mobile={mobile} />)}
+      </div>
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 1 }}>
+        <SectionHeading label="Tracking" total="$123,596.76" theme={theme} />
+        {trackingAccounts.map((a) => <AccountRow key={a.name} {...a} theme={theme} mobile={mobile} />)}
+      </div>
+
+      <div style={{ flex: 1 }}></div>
+
+      {/* Net total */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        borderTop: "1px solid " + theme.border,
+        margin: "0 2px", padding: "10px 8px 12px",
+      }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: theme.secondary }}>Net total</span>
+        <span className="num" style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>$140,020.59</span>
+      </div>
+
+      {/* Add account */}
+      <button className="btn" style={{
+        background: theme.btnBg, border: "1px solid " + theme.btnBorder, color: theme.btnText,
+        height: mobile ? 40 : "var(--control-h)", width: "100%",
+      }}>+ Add account</button>
+    </div>
+  );
+}
+
+/* ---------------- Artboard contents ---------------- */
+
+function EmptyMain({ label }) {
+  return (
+    <div style={{
+      flex: 1, background: "var(--bg-app)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gray-300)" }}>{label}</span>
+    </div>
+  );
+}
+
+function DesktopShell({ t }) {
+  return (
+    <div data-screen-label="Desktop shell" data-theme={t.theme} style={{ display: "flex", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)" }}>
+      <Sidebar tone={t.sidebarTone} width={t.sidebarWidth} />
+      <EmptyMain label="( main area )" />
+    </div>
+  );
+}
+
+function MobileTopBar({ t, onMenu }) {
+  const dark = t.sidebarTone === "dark";
+  return (
+    <div style={{
+      height: 52, flexShrink: 0, boxSizing: "border-box",
+      background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)",
+      display: "flex", alignItems: "center", gap: 4, padding: "0 6px",
+    }}>
+      <div style={{
+        width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+        borderRadius: "var(--radius-sm)", cursor: "pointer", color: "var(--text-primary)", fontSize: 18,
+      }}>☰</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: 5,
+          background: dark ? "#0c423c" : "var(--accent)", color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
+        }}>M</div>
+        <span style={{ fontSize: 16, fontWeight: 600 }}>Budget</span>
+      </div>
+    </div>
+  );
+}
+
+function MobileClosed({ t }) {
+  return (
+    <div data-screen-label="Mobile — nav closed" data-theme={t.theme} style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)" }}>
+      <MobileTopBar t={t} />
+      <EmptyMain label="( main area )" />
+    </div>
+  );
+}
+
+function MobileDrawerOpen({ t }) {
+  return (
+    <div data-screen-label="Mobile — drawer open" data-theme={t.theme} style={{ position: "relative", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
+        <MobileTopBar t={t} />
+        <EmptyMain label="" />
+      </div>
+      {/* scrim */}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(27,30,34,0.40)" }}></div>
+      {/* drawer */}
+      <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 300, boxShadow: "8px 0 24px rgba(27,30,34,0.18)" }}>
+        <Sidebar tone={t.sidebarTone} width={300} mobile />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Canvas ---------------- */
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  return (
+    <div>
+      <DesignCanvas>
+        <DCSection id="shell" title="App shell" subtitle="Sidebar nav + account list · desktop and collapsed mobile">
+          <DCArtboard id="desktop" label="Desktop · 1440" width={1440} height={900}>
+            <DesktopShell t={t} />
+          </DCArtboard>
+          <DCArtboard id="mobile-closed" label="Mobile · sidebar collapsed" width={390} height={844}>
+            <MobileClosed t={t} />
+          </DCArtboard>
+          <DCArtboard id="mobile-open" label="Mobile · drawer open" width={390} height={844}>
+            <MobileDrawerOpen t={t} />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+      <TweaksPanel>
+        <TweakSection label="Layout" />
+        <TweakRadio label="Theme" value={t.theme} options={["light", "dark"]} onChange={(v) => setTweak("theme", v)} />
+        <TweakSection label="Sidebar" />
+        <TweakRadio label="Tone" value={t.sidebarTone} options={["light", "dark"]} onChange={(v) => setTweak("sidebarTone", v)} />
+        <TweakSlider label="Width" value={t.sidebarWidth} min={216} max={300} step={4} unit="px" onChange={(v) => setTweak("sidebarWidth", v)} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

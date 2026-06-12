@@ -1,0 +1,36 @@
+<!-- @dsCard group="Type" viewport="700x150" subtitle="Tabular numerals — every money figure uses .num" name="Money formatting" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .col h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+  .stack { width: 140px; font-size: 13px; }
+  .stack div { padding: 2px 0; border-bottom: 1px solid var(--border-row); }
+  .rules { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0; padding-left: 16px; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <h4>Columns align with .num</h4>
+    <div class="stack">
+      <div class="num">$1,234.56</div>
+      <div class="num">$87.20</div>
+      <div class="num amount-inflow">$3,500.00</div>
+      <div class="num" style="color: var(--cash-overspent-fg);">−$112.19</div>
+      <div class="num" style="color: var(--text-muted);">$0.00</div>
+    </div>
+  </div>
+  <div class="col">
+    <h4>Rules</h4>
+    <ul class="rules">
+      <li>Always <code>$1,234.56</code> — two decimals, comma groups</li>
+      <li>True minus sign (−), never a hyphen</li>
+      <li>Inflows may tint green; outflows stay plain dark</li>
+      <li>Red means <em>overspent</em>, never ordinary spending</li>
+    </ul>
+  </div>
+</body>
+</html>

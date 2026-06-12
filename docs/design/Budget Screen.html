@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Screen — M Needs A Budget</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  body { margin: 0; }
+  .activity-link:hover { color: var(--accent) !important; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="shell-components.jsx"></script>
+<script type="text/babel" src="budget-components.jsx"></script>
+<script type="text/babel" data-presets="react">
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "sidebarTone": "dark",
+  "rtaStyle": "compact",
+  "rowHeight": 34,
+  "showTargets": true,
+  "theme": "light"
+}/*EDITMODE-END*/;
+
+const MONTHS = ["April 2026", "May 2026", "June 2026", "July 2026"];
+const RTA_BASE = 412.83; // with the seed assignments below
+
+function cloneGroups(gs) {
+  return gs.map((g) => ({ ...g, cats: g.cats.map((c) => ({ ...c })) }));
+}
+
+function sumAssigned(gs) {
+  return gs.reduce((a, g) => a + g.cats.reduce((b, c) => b + c.assigned, 0), 0);
+}
+
+/* ---------------- Interactive Budget screen ---------------- */
+
+function BudgetScreen({ t }) {
+  const [monthIdx, setMonthIdx] = React.useState(2);
+  const [groups, setGroups] = React.useState(() => cloneGroups(initialGroups));
+  const [collapsed, setCollapsed] = React.useState({ save: true });
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [popoverFor, setPopoverFor] = React.useState(null);
+
+  const initialSum = React.useMemo(() => sumAssigned(initialGroups), []);
+  const rta = RTA_BASE - (sumAssigned(groups) - initialSum);
+  const underfunded = groups.reduce((a, g) => a + g.cats.reduce((b, c) => {
+    const av = catAvailable(c);
+    return b + (av < -0.004 ? -av : 0);
+  }, 0), 0);
+
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { setPopoverFor(null); setMenuOpen(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const onAssign = (catId, n) => {
+    setGroups((gs) => gs.map((g) => ({ ...g, cats: g.cats.map((c) => c.id === catId ? { ...c, assigned: n } : c) })));
+  };
+
+  const onMove = (catId, otherId, amt, mode) => {
+    if (!amt) return;
+    setGroups((gs) => gs.map((g) => ({
+      ...g,
+      cats: g.cats.map((c) => {
+        if (mode === "take") {
+          if (c.id === catId) return { ...c, assigned: c.assigned - amt };
+          if (c.id === otherId) return { ...c, assigned: c.assigned + amt };
+        } else {
+          if (c.id === catId) return { ...c, assigned: c.assigned + amt };
+          if (c.id === otherId) return { ...c, assigned: c.assigned - amt };
+        }
+        return c;
+      }),
+    })));
+  };
+
+  const onQuickAssign = (key) => {
+    setMenuOpen(false);
+    if (key === "underfunded") {
+      setGroups((gs) => gs.map((g) => ({
+        ...g,
+        cats: g.cats.map((c) => {
+          const av = catAvailable(c);
+          return av < -0.004 ? { ...c, assigned: c.assigned - av } : c;
+        }),
+      })));
+    }
+    if (key === "reset") {
+      setGroups((gs) => gs.map((g) => ({ ...g, cats: g.cats.map((c) => ({ ...c, assigned: 0 })) })));
+    }
+  };
+
+  const onAssignManual = (catId, amt) => {
+    setMenuOpen(false);
+    if (!catId || !amt) return;
+    setGroups((gs) => gs.map((g) => ({ ...g, cats: g.cats.map((c) => c.id === catId ? { ...c, assigned: c.assigned + amt } : c) })));
+  };
+
+  return (
+    <div data-screen-label="Budget screen" data-theme={t.theme} style={{ display: "flex", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", "--row-h": t.rowHeight + "px" }}>
+      <Sidebar tone={t.sidebarTone} width={240} activeNav="Budget" />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div style={{
+          background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)",
+          padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+        }}>
+          <MonthSwitcher month={MONTHS[monthIdx]}
+            onPrev={() => setMonthIdx((i) => Math.max(0, i - 1))}
+            onNext={() => setMonthIdx((i) => Math.min(MONTHS.length - 1, i + 1))} />
+          {t.rtaStyle === "compact" ? (
+            <RtaBanner amount={rta} menuOpen={menuOpen} underfunded={underfunded} groups={groups}
+              onToggleMenu={() => setMenuOpen(!menuOpen)} onCloseMenu={() => setMenuOpen(false)}
+              onPick={onQuickAssign} onAssignManual={onAssignManual} />
+          ) : null}
+        </div>
+        <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
+          {t.rtaStyle === "bar" ? (
+            <RtaBanner bar amount={rta} menuOpen={menuOpen} underfunded={underfunded} groups={groups}
+              onToggleMenu={() => setMenuOpen(!menuOpen)} onCloseMenu={() => setMenuOpen(false)}
+              onPick={onQuickAssign} onAssignManual={onAssignManual} />
+          ) : null}
+          <BudgetTable groups={groups} rta={rta} collapsed={collapsed}
+            onToggleGroup={(id) => setCollapsed((c) => ({ ...c, [id]: !c[id] }))}
+            onAssign={onAssign} onMove={onMove}
+            popoverFor={popoverFor} setPopoverFor={setPopoverFor} showTargets={t.showTargets} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ---------------- Static state artboards ---------------- */
+
+function RtaStates() {
+  return (
+    <div data-screen-label="RTA banner states" style={{ width: "100%", height: "100%", boxSizing: "border-box", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", padding: 24, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+      <RtaBanner amount={412.83} menuOpen underfunded={150.69} groups={initialGroups} onToggleMenu={() => {}} onPick={() => {}} />
+      <div style={{ height: 268 }}></div>
+      <RtaBanner amount={-86.20} underfunded={150.69} onToggleMenu={() => {}} />
+      <div style={{ height: 16 }}></div>
+      <RtaBanner amount={0} />
+    </div>
+  );
+}
+
+function MovePopoverStates() {
+  const groceries = initialGroups[0].cats[1];
+  const transport = initialGroups[0].cats[4];
+  return (
+    <div data-screen-label="Move money popover" style={{ width: "100%", height: "100%", boxSizing: "border-box", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", padding: 24, display: "flex", gap: 24, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>from a funded pill</span>
+        <MoveMoneyPopover staticPos mode="take" cat={groceries} groups={initialGroups} rta={412.83} onClose={() => {}} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>from an overspent pill</span>
+        <MoveMoneyPopover staticPos mode="cover" cat={transport} groups={initialGroups} rta={412.83} onClose={() => {}} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Canvas ---------------- */
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  return (
+    <div>
+      <DesignCanvas>
+        <DCSection id="budget" title="Budget (home)" subtitle="Interactive: collapse groups, edit Assigned, click pills to move money, quick-assign from the banner">
+          <DCArtboard id="main" label="Budget · June 2026 · interactive" width={1440} height={900}>
+            <BudgetScreen t={t} />
+          </DCArtboard>
+          <DCArtboard id="main-dark" label="Budget · dark theme" width={1440} height={900}>
+            <BudgetScreen t={{ ...t, theme: "dark", sidebarTone: "light" }} />
+          </DCArtboard>
+          <DCArtboard id="rta-states" label="RTA banner · 3 states" width={760} height={560}>
+            <RtaStates />
+          </DCArtboard>
+          <DCArtboard id="move-money" label="Move money · 2 modes" width={680} height={420}>
+            <MovePopoverStates />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+      <TweaksPanel>
+        <TweakSection label="Layout" />
+        <TweakRadio label="Theme (1st board)" value={t.theme} options={["light", "dark"]} onChange={(v) => setTweak("theme", v)} />
+        <TweakRadio label="RTA banner" value={t.rtaStyle} options={["compact", "bar"]} onChange={(v) => setTweak("rtaStyle", v)} />
+        <TweakToggle label="Target bars" value={t.showTargets} onChange={(v) => setTweak("showTargets", v)} />
+        <TweakSlider label="Row height" value={t.rowHeight} min={28} max={40} step={2} unit="px" onChange={(v) => setTweak("rowHeight", v)} />
+        <TweakSection label="Sidebar" />
+        <TweakRadio label="Tone" value={t.sidebarTone} options={["light", "dark"]} onChange={(v) => setTweak("sidebarTone", v)} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

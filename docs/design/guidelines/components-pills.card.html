@@ -1,0 +1,19 @@
+<!-- @dsCard group="Components" viewport="700x120" subtitle="Available pills — the four states with amounts" name="Available pills" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .lab { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .lab span { font-size: 10px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+  <div class="lab"><span class="pill pill--funded num">$245.00</span><span>funded</span></div>
+  <div class="lab"><span class="pill pill--credit num">−$38.50</span><span>credit-overspent</span></div>
+  <div class="lab"><span class="pill pill--cash num">−$112.19</span><span>cash-overspent</span></div>
+  <div class="lab"><span class="pill pill--zero num">$0.00</span><span>zero</span></div>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register · Checking — M Needs A Budget</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="shell-components.jsx"></script>
+<script type="text/babel" src="budget-components.jsx"></script>
+<script type="text/babel" src="register-components.jsx"></script>
+<script type="text/babel" data-presets="react">
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "sidebarTone": "light",
+  "memoColumn": true,
+  "rowHeight": 32,
+  "theme": "dark"
+}/*EDITMODE-END*/;
+
+/* ---------------- Desktop register (interactive) ---------------- */
+
+function RegisterScreen({ t }) {
+  const [txns, setTxns] = React.useState(seedTransactions);
+  const [search, setSearch] = React.useState("");
+  const [unclearedOnly, setUnclearedOnly] = React.useState(false);
+  const [nextId, setNextId] = React.useState(100);
+
+  const filtered = txns.filter((x) => {
+    if (unclearedOnly && x.cleared) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!(x.payee.toLowerCase().includes(q) || x.category.toLowerCase().includes(q) || (x.memo || "").toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+
+  const onToggleCleared = (id) => setTxns((ts) => ts.map((x) => x.id === id ? { ...x, cleared: !x.cleared } : x));
+  const onSave = (row) => { setTxns((ts) => [{ ...row, id: nextId }].concat(ts)); setNextId((n) => n + 1); };
+
+  return (
+    <div data-screen-label="Register — Checking" data-theme={t.theme} style={{ display: "flex", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", "--row-h": t.rowHeight + "px" }}>
+      <Sidebar tone={t.sidebarTone} width={240} activeNav="" activeAccount="Checking" />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <BalanceHeader txns={txns} accountName="Checking" />
+        <RegisterToolbar search={search} setSearch={setSearch}
+          unclearedOnly={unclearedOnly} setUnclearedOnly={setUnclearedOnly} count={filtered.length} />
+        <div style={{ flex: 1, padding: "12px 24px 24px", minHeight: 0 }}>
+          <RegisterTable txns={filtered} onToggleCleared={onToggleCleared} onSave={onSave} memoCol={t.memoColumn} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ---------------- Mobile register ---------------- */
+
+function mobileDateLabel(date) {
+  if (date === "06/11/2026") return "Today";
+  if (date === "06/10/2026") return "Yesterday";
+  const [m, d] = date.split("/");
+  const names = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return names[parseInt(m, 10)] + " " + parseInt(d, 10);
+}
+
+function MobileTxnRow({ t }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 56, padding: "0 16px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-row)" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.payee}</div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.category}{t.memo ? " · " + t.memo : ""}</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <span className={"num" + (t.amount > 0 ? " amount-inflow" : "")} style={{ fontSize: 14, fontWeight: 600 }}>{t.amount > 0 ? fmtMoney(t.amount) : fmtMoney(-t.amount)}</span>
+        <span style={{ fontSize: 12, color: t.cleared ? "var(--funded-strong)" : "var(--text-muted)" }}>{t.cleared ? "●" : "○"}</span>
+      </div>
+    </div>
+  );
+}
+
+function MobileBalanceStrip({ txns }) {
+  const b = registerBalances(txns);
+  const fig = (label, v, strong) => (
+    <div style={{ textAlign: "center", flex: 1 }}>
+      <div className="num" style={{ fontSize: strong ? 16 : 13, fontWeight: strong ? 700 : 600, textAlign: "center" }}>{fmtMoney(v)}</div>
+      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 1 }}>{label}</div>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", alignItems: "center", padding: "10px 8px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)" }}>
+      {fig("Cleared", b.cleared)}
+      <span style={{ color: "var(--text-muted)" }}>+</span>
+      {fig("Uncleared", b.uncleared)}
+      <span style={{ color: "var(--text-muted)" }}>=</span>
+      {fig("Working", b.working, true)}
+    </div>
+  );
+}
+
+function MobileTopBarRegister({ title }) {
+  return (
+    <div style={{ height: 52, flexShrink: 0, boxSizing: "border-box", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 4, padding: "0 6px" }}>
+      <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer" }}>☰</div>
+      <span style={{ fontSize: 16, fontWeight: 600 }}>{title}</span>
+      <div style={{ flex: 1 }}></div>
+      <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "var(--text-secondary)", cursor: "pointer" }}>⌕</div>
+    </div>
+  );
+}
+
+function MobileRegister({ theme }) {
+  const groups = [];
+  seedTransactions.forEach((x) => {
+    const label = mobileDateLabel(x.date);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.txns.push(x);
+    else groups.push({ label: label, txns: [x] });
+  });
+  return (
+    <div data-screen-label="Mobile — register" data-theme={theme} style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", overflow: "hidden" }}>
+      <MobileTopBarRegister title="Checking" />
+      <MobileBalanceStrip txns={seedTransactions} />
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {groups.map((g) => (
+          <div key={g.label}>
+            <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>{g.label}</div>
+            {g.txns.map((x) => <MobileTxnRow key={x.id} t={x} />)}
+          </div>
+        ))}
+      </div>
+      <div style={{ position: "absolute", right: 16, bottom: 20, width: 56, height: 56, borderRadius: "50%", background: "var(--accent)", color: "var(--text-on-fill)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 400, boxShadow: "0 4px 12px rgba(10,79,72,0.35)", cursor: "pointer" }}>+</div>
+    </div>
+  );
+}
+
+/* ---------------- Mobile add-transaction sheet ---------------- */
+
+function SheetField({ label, value, muted, last }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 48, padding: "0 16px", borderBottom: last ? "none" : "1px solid var(--border-row)" }}>
+      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: muted ? "var(--text-muted)" : "var(--text-primary)" }}>{value}</span>
+    </div>
+  );
+}
+
+function MobileAddSheet({ theme }) {
+  return (
+    <div data-screen-label="Mobile — add transaction" data-theme={theme} style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", background: "var(--bg-app)", color: "var(--text-primary)", fontFamily: "var(--font-ui)", overflow: "hidden" }}>
+      <MobileTopBarRegister title="Checking" />
+      <MobileBalanceStrip txns={seedTransactions} />
+      <div style={{ position: "absolute", inset: 0, background: "rgba(27,30,34,0.40)" }}></div>
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "var(--bg-surface)", borderRadius: "14px 14px 0 0", boxShadow: "0 -8px 24px rgba(27,30,34,0.18)", paddingBottom: 12 }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--gray-300)", margin: "8px auto 0" }}></div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 0" }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>New transaction</span>
+          <span style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, color: "var(--text-secondary)", cursor: "pointer", marginRight: -12 }}>✕</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 0, margin: "4px 16px 0", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+          <div style={{ flex: 1, textAlign: "center", padding: "9px 0", fontSize: 13, fontWeight: 600, background: "var(--gray-800)", color: "var(--gray-50)" }}>Outflow</div>
+          <div style={{ flex: 1, textAlign: "center", padding: "9px 0", fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", cursor: "pointer" }}>Inflow</div>
+        </div>
+
+        <div className="num" style={{ textAlign: "center", fontSize: 34, fontWeight: 700, padding: "16px 0 12px" }}>$42.07</div>
+
+        <div style={{ borderTop: "1px solid var(--border-row)" }}>
+          <SheetField label="Payee" value="Shell" />
+          <SheetField label="Category" value="Transport · auto-filled" />
+          <SheetField label="Date" value="Today · Jun 11" />
+          <SheetField label="Memo" value="Add memo" muted />
+          <SheetField label="Cleared" value="○ Uncleared" muted last />
+        </div>
+
+        <div style={{ padding: "8px 16px 0" }}>
+          <button className="btn btn-primary" style={{ width: "100%", height: 48, fontSize: 16 }}>Save transaction</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Canvas ---------------- */
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  return (
+    <div>
+      <DesignCanvas>
+        <DCSection id="register" title="Accounts & Register — Checking" subtitle="Interactive: add a transaction (Enter saves, Esc cancels, payee autocompletes), toggle ✓, search, Uncleared filter">
+          <DCArtboard id="desktop" label="Register · Checking · interactive" width={1440} height={900}>
+            <RegisterScreen t={t} />
+          </DCArtboard>
+          <DCArtboard id="mobile" label="Mobile · register" width={390} height={844}>
+            <MobileRegister theme={t.theme} />
+          </DCArtboard>
+          <DCArtboard id="mobile-add" label="Mobile · add transaction" width={390} height={844}>
+            <MobileAddSheet theme={t.theme} />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+      <TweaksPanel>
+        <TweakSection label="Layout" />
+        <TweakRadio label="Theme" value={t.theme} options={["light", "dark"]} onChange={(v) => setTweak("theme", v)} />
+        <TweakSection label="Table" />
+        <TweakToggle label="Memo column" value={t.memoColumn} onChange={(v) => setTweak("memoColumn", v)} />
+        <TweakSlider label="Row height" value={t.rowHeight} min={28} max={40} step={2} unit="px" onChange={(v) => setTweak("rowHeight", v)} />
+        <TweakSection label="Sidebar" />
+        <TweakRadio label="Tone" value={t.sidebarTone} options={["light", "dark"]} onChange={(v) => setTweak("sidebarTone", v)} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

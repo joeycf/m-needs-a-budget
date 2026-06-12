@@ -1,0 +1,39 @@
+<!-- @dsCard group="Spacing" viewport="700x150" subtitle="4px scale · small radii · 32px rows, 28px controls" name="Spacing & density" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: #fff; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  h4 { margin: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+  .scale { display: flex; align-items: flex-end; gap: 8px; }
+  .bar { background: var(--teal-100); border: 1px solid var(--teal-300); border-radius: 2px; width: 20px; }
+  .scale span { font-size: 9px; color: var(--text-muted); display: block; text-align: center; margin-top: 3px; }
+  .density { display: flex; flex-direction: column; gap: 8px; }
+  .meter { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary); }
+  .box { background: var(--gray-50); border: 1px dashed var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+  <div>
+    <h4>Spacing — 4px base</h4>
+    <div class="scale">
+      <div><div class="bar" style="height: 4px"></div><span>4</span></div>
+      <div><div class="bar" style="height: 8px"></div><span>8</span></div>
+      <div><div class="bar" style="height: 12px"></div><span>12</span></div>
+      <div><div class="bar" style="height: 16px"></div><span>16</span></div>
+      <div><div class="bar" style="height: 20px"></div><span>20</span></div>
+      <div><div class="bar" style="height: 24px"></div><span>24</span></div>
+      <div><div class="bar" style="height: 32px"></div><span>32</span></div>
+      <div><div class="bar" style="height: 40px"></div><span>40</span></div>
+    </div>
+  </div>
+  <div class="density">
+    <h4>Density</h4>
+    <div class="meter"><div class="box" style="width: 160px; height: var(--row-h);">table row</div>32px</div>
+    <div class="meter"><div class="box" style="width: 160px; height: var(--control-h);">control</div>28px</div>
+    <div class="meter"><div class="box" style="width: 160px; height: 20px; border-radius: 999px;">pill</div>20px</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x150" subtitle="Ready to Assign banner — green / red / gray fills" name="RTA banner states" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 16px; background: var(--bg-app); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .rta-banner { width: 320px; justify-content: space-between; box-sizing: border-box; }
+</style>
+</head>
+<body>
+  <div class="rta-banner rta-banner--positive">
+    <div><div class="rta-amount num">$412.83</div><div class="rta-label">Ready to Assign</div></div>
+    <button class="btn btn-secondary">Assign ▾</button>
+  </div>
+  <div class="rta-banner rta-banner--negative">
+    <div><div class="rta-amount num">−$86.20</div><div class="rta-label">Ready to Assign</div></div>
+    <button class="btn btn-secondary">Fix ▾</button>
+  </div>
+  <div class="rta-banner rta-banner--zero">
+    <div><div class="rta-amount num">$0.00</div><div class="rta-label">All money assigned</div></div>
+  </div>
+</body>
+</html>
