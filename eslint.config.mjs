@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design handoff reference files (browser-global JSX, not app code).
+    "docs/**",
   ]),
 ]);
 

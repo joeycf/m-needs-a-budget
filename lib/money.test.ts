@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { formatMilliunits, parseMoneyToMilliunits } from "@/lib/money";
+import {
+  formatMilliunits,
+  milliunitsToInput,
+  parseMoneyToMilliunits,
+} from "@/lib/money";
 
 describe("formatMilliunits", () => {
   it("formats zero", () => {
@@ -27,6 +31,18 @@ describe("formatMilliunits", () => {
   it("truncates sub-cent milliunits toward zero", () => {
     expect(formatMilliunits(1_999n)).toBe("$1.99");
     expect(formatMilliunits(-1_999n)).toBe("−$1.99");
+  });
+});
+
+describe("milliunitsToInput", () => {
+  it("renders the unsigned magnitude for editor fields", () => {
+    expect(milliunitsToInput(84_120n)).toBe("84.12");
+    expect(milliunitsToInput(-1_800_000n)).toBe("1800.00");
+    expect(milliunitsToInput(0n)).toBe("0.00");
+  });
+
+  it("round-trips through parseMoneyToMilliunits", () => {
+    expect(parseMoneyToMilliunits(milliunitsToInput(42_070n))).toBe(42_070n);
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 
 import {
   createAccount,
@@ -176,19 +176,31 @@ export function EditAccountDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-[6px]">
+        <DialogHeader>
+          <DialogTitle>Edit account</DialogTitle>
+        </DialogHeader>
+        {/* Radix unmounts the content on close, so the form re-seeds from
+            the account on every open without effect-driven state syncing. */}
+        <EditAccountForm account={account} onClose={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditAccountForm({
+  account,
+  onClose,
+}: {
+  account: { id: string; name: string; note: string | null };
+  onClose: () => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState(account.name);
   const [note, setNote] = useState(account.note ?? "");
   const [error, setError] = useState<string | null>(null);
-
-  // Re-sync the fields each time the dialog opens.
-  useEffect(() => {
-    if (open) {
-      setName(account.name);
-      setNote(account.note ?? "");
-      setError(null);
-    }
-  }, [open, account.name, account.note]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -198,17 +210,12 @@ export function EditAccountDialog({
         setError(result.error);
         return;
       }
-      onOpenChange(false);
+      onClose();
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[6px]">
-        <DialogHeader>
-          <DialogTitle>Edit account</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="flex flex-col gap-3">
+    <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Name">
             <input
               className="input w-full"
@@ -226,22 +233,16 @@ export function EditAccountDialog({
               placeholder="Optional"
             />
           </Field>
-          <ErrorLine error={error} />
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>
-              Save
-            </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <ErrorLine error={error} />
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          Save
+        </button>
+      </div>
+    </form>
   );
 }
 

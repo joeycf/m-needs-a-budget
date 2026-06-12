@@ -47,6 +47,7 @@ export interface RegisterRow {
   accountName: string;
   date: string;
   amount: bigint;
+  payeeId: string | null;
   payeeName: string | null;
   categoryId: string | null;
   categoryName: string | null;
@@ -68,6 +69,7 @@ export async function getRegisterRows(
       accountName: accounts.name,
       date: transactions.date,
       amount: transactions.amount,
+      payeeId: transactions.payeeId,
       payeeName: payees.name,
       categoryId: transactions.categoryId,
       categoryName: categories.name,

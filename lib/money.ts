@@ -13,6 +13,14 @@ export function formatMilliunits(milli: bigint): string {
   return `${negative ? "−" : ""}$${dollars}.${cents}`;
 }
 
+/** Unsigned editor-field value (no $, sign, or grouping): 84120n → "84.12".
+ *  The caller picks the outflow/inflow field from the sign. */
+export function milliunitsToInput(milli: bigint): string {
+  const abs = milli < 0n ? -milli : milli;
+  const cents = ((abs % 1000n) / 10n).toString().padStart(2, "0");
+  return `${abs / 1000n}.${cents}`;
+}
+
 /** Parse user input ("$1,234.56", "-42.07", ".5") to milliunits without
  *  ever going through a float. Blank or malformed input returns null. */
 export function parseMoneyToMilliunits(input: string): bigint | null {
