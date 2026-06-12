@@ -11,3 +11,43 @@ body {
   background: var(--bg-app);
   color: var(--text-primary);
 }
+
+/* Point shadcn's semantic variables at the design tokens so the radix
+   primitives (dialog, sheet, dropdown-menu) render in handoff colors
+   without per-usage overrides. --accent itself already resolves to the
+   token teal (tokens import after shadcn-theme.css). */
+:root,
+.dark {
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--teal-600);
+  --primary-foreground: var(--text-on-fill);
+  --secondary: var(--gray-100);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-raised);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--cash-overspent-strong);
+  --border: var(--border-default);
+  --input: var(--border-strong);
+  --ring: var(--teal-300);
+  --radius: 6px; /* cards/menus radius-md per spacing tokens */
+}
+
+/* Dialog/sheet scrim per the design mocks. */
+[data-slot="dialog-overlay"],
+[data-slot="sheet-overlay"] {
+  background: rgba(27, 30, 34, 0.4);
+}
+
+/* Menu rows hover/focus like .menu-item (quiet gray, not teal). */
+[data-slot="dropdown-menu-item"]:focus,
+[data-slot="dropdown-menu-checkbox-item"]:focus,
+[data-slot="dropdown-menu-radio-item"]:focus {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
