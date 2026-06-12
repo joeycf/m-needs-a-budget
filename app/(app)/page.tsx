@@ -102,6 +102,7 @@ export default async function BudgetPage({
       rta={rta}
       groups={groups}
       autoTotals={{ assignedLastMonth, spentLastMonth }}
+      hasAccounts={engineInput.accounts.some((account) => account.onBudget)}
     />
   );
 }

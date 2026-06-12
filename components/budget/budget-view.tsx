@@ -83,6 +83,7 @@ export function BudgetView({
   rta,
   groups,
   autoTotals,
+  hasAccounts,
 }: {
   month: string;
   monthLabel: string;
@@ -91,6 +92,7 @@ export function BudgetView({
   rta: bigint;
   groups: BudgetGroupData[];
   autoTotals: AutoTotals;
+  hasAccounts: boolean;
 }) {
   const [, startTransition] = useTransition();
   const [assignOpen, setAssignOpen] = useState(false);
@@ -222,6 +224,13 @@ export function BudgetView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+        {!hasAccounts ? (
+          <p className="mb-3 text-(--text-table) text-(--text-secondary)">
+            No accounts yet — add one from the sidebar (☰ on mobile). Its
+            starting balance lands in Ready to Assign, and assigning it to
+            categories starts the budget.
+          </p>
+        ) : null}
         {error ? (
           <p className="mb-3 text-(--text-table) text-(--cash-overspent-fg)">
             {error}
