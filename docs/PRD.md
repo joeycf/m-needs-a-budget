@@ -234,7 +234,7 @@ CREATE TABLE scheduled_transactions (
 7. Budget screen polish: move money, targets + underfunded, quick-assign actions.
 8. Reports (all three).
 9. Scheduled transactions + "enter now".
-10. YNAB historical import (one-time script, run after Milestone 4):
+10. YNAB historical import (one-time script, run after Milestone 5):
 `scripts/import-ynab.ts` reads YNAB's export (Register.csv +
 Budget.csv) from a gitignored data/ folder. Maps accounts (with
 types), payees, and category groups/categories, creating missing
