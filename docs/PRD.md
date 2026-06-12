@@ -234,10 +234,26 @@ CREATE TABLE scheduled_transactions (
 7. Budget screen polish: move money, targets + underfunded, quick-assign actions.
 8. Reports (all three).
 9. Scheduled transactions + "enter now".
+10. YNAB historical import (one-time script, run after Milestone 4):
+`scripts/import-ynab.ts` reads YNAB's export (Register.csv +
+Budget.csv) from a gitignored data/ folder. Maps accounts (with
+types), payees, and category groups/categories, creating missing
+ones; parses Outflow/Inflow with lib/money string math; maps the
+Cleared column to cleared/reconciled; reconstructs transfers by
+pairing "Transfer : <Account>" rows (matching date + amount);
+rebuilds splits from "Split (n/m)" memo rows into parent +
+subtransactions; imports Budget.csv "Budgeted" into
+category_months.assigned. Supports wipe-and-reimport (replaces
+manually-created starting balances); imports only transactions
+dated before a cutoff date passed as an argument. Validation:
+recompute Available per category-month and RTA with the engine
+and diff against YNAB's exported values, reporting every
+mismatch — this doubles as an end-to-end engine test on real
+history.
 
 ## 11. v2 Backlog
 
-Age of Money (average age, FIFO, of the cash spent in the last 10 cash outflows), CSV import/export per account, undo/redo, full keyboard navigation, PWA install + offline cache, auto-enter scheduled transactions via Vercel Cron, category notes history, multi-budget support.
+Age of Money (average age, FIFO, of the cash spent in the last 10 cash outflows), CSV export per account, undo/redo, full keyboard navigation, PWA install + offline cache, auto-enter scheduled transactions via Vercel Cron, category notes history, multi-budget support.
 
 ## 12. Engine Test Cases Claude Code Must Cover
 
