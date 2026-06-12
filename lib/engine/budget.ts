@@ -3,10 +3,11 @@
 // and callable from scripts (the M10 YNAB replay drives whole histories
 // through computeBudget).
 //
-// Milestone 3 scope (cash only): all on-budget activity is treated as cash
-// spending — S_credit is effectively 0. M4 (overspending classification) and
-// M5 (credit card mechanics) refine cashOverspent and add payment-category
-// moves on top of this walker.
+// Milestone 4 scope: activity is split by account class (credit_card vs
+// cash) and each category-month shortfall partitions into fundedCredit /
+// creditOverspent / cashOverspent per §4 — only the cash share ever docks
+// RTA. M5 (credit card mechanics) adds the payment-category moves on top:
+// fundedCredit is computed here but not yet re-reserved anywhere.
 
 export type EngineAccountType =
   | "checking"
@@ -64,7 +65,16 @@ export interface CategoryMonthState {
   activity: bigint;
   carryover: bigint;
   available: bigint; // carryover + assigned + activity
-  cashOverspent: bigint; // max(−available, 0) while cash-only (M4 splits credit)
+  /** Funded slice of this month's net card spending,
+   *  clamp(carryover + assigned − S_cash, 0, max(S_credit, 0)). Nonzero even
+   *  when the category isn't overspent — it's the amount M5 moves to the
+   *  card's payment category. */
+  fundedCredit: bigint;
+  /** Unfunded card spending: becomes card debt and never docks RTA. */
+  creditOverspent: bigint;
+  /** Cash share of the shortfall, max(−available, 0) − creditOverspent.
+   *  Subtracted from RTA in every month after this one. */
+  cashOverspent: bigint;
 }
 
 export interface MonthState {
@@ -107,6 +117,10 @@ export function prevMonth(month: string): string {
 // ---------------------------------------------------------------------------
 
 /** Per-category amounts for one month, accumulated into `into`. */
+function clamp(value: bigint, lo: bigint, hi: bigint): bigint {
+  return value < lo ? lo : value > hi ? hi : value;
+}
+
 function accumulate(
   into: Map<string, Map<string, bigint>>,
   month: string,
@@ -134,21 +148,32 @@ export function computeBudget(
   const onBudgetAccounts = new Set(
     input.accounts.filter((a) => a.onBudget).map((a) => a.id),
   );
+  const creditAccounts = new Set(
+    input.accounts
+      .filter((a) => a.onBudget && a.type === "credit_card")
+      .map((a) => a.id),
+  );
   const rtaCategories = new Set(
     input.categories.filter((c) => c.isReadyToAssign).map((c) => c.id),
   );
   const budgetCategories = input.categories.filter((c) => !c.isReadyToAssign);
   const knownCategories = new Set(budgetCategories.map((c) => c.id));
 
-  // Index activity per (month, category); RTA-categorized flows are income.
-  // Transactions on tracking accounts never touch the budget; postings to
-  // unknown categories are ignored defensively (FKs prevent them upstream).
+  // Index activity per (month, category), split by account class so §4 can
+  // classify shortfalls; RTA-categorized flows are income wherever they land
+  // (card cash-back counts too). Transactions on tracking accounts never
+  // touch the budget; postings to unknown categories are ignored defensively
+  // (FKs prevent them upstream).
   let incomeAllTime = 0n;
-  const activity = new Map<string, Map<string, bigint>>();
+  const cashActivity = new Map<string, Map<string, bigint>>();
+  const creditActivity = new Map<string, Map<string, bigint>>();
   let earliest: string | null = null;
 
   for (const txn of input.transactions) {
     if (!onBudgetAccounts.has(txn.accountId)) continue;
+    const into = creditAccounts.has(txn.accountId)
+      ? creditActivity
+      : cashActivity;
     const month = monthOfDate(txn.date);
     if (earliest === null || month < earliest) earliest = month;
     const postings =
@@ -160,7 +185,7 @@ export function computeBudget(
       if (rtaCategories.has(posting.categoryId)) {
         incomeAllTime += posting.amount;
       } else if (knownCategories.has(posting.categoryId)) {
-        accumulate(activity, month, posting.categoryId, posting.amount);
+        accumulate(into, month, posting.categoryId, posting.amount);
       }
     }
   }
@@ -178,37 +203,56 @@ export function computeBudget(
   const start = earliest !== null && earliest < throughMonth ? earliest : throughMonth;
   const months = new Map<string, MonthState>();
   const previousAvailable = new Map<string, bigint>();
-  let overspentBefore = 0n;
+  let cashOverspentBefore = 0n;
 
   for (let month = start; month <= throughMonth; month = nextMonth(month)) {
     const categories = new Map<string, CategoryMonthState>();
-    let overspentThisMonth = 0n;
+    let cashOverspentThisMonth = 0n;
 
     for (const category of budgetCategories) {
       const previous = previousAvailable.get(category.id) ?? 0n;
       const carryover = previous > 0n ? previous : 0n;
       const assignedHere = assigned.get(month)?.get(category.id) ?? 0n;
-      const activityHere = activity.get(month)?.get(category.id) ?? 0n;
+      const cashHere = cashActivity.get(month)?.get(category.id) ?? 0n;
+      const creditHere = creditActivity.get(month)?.get(category.id) ?? 0n;
+      const activityHere = cashHere + creditHere;
       const available = carryover + assignedHere + activityHere;
-      const cashOverspent = available < 0n ? -available : 0n;
+
+      // §4 classification, spends as positive numbers. Cash spending eats
+      // the available-before-spending first; what's left funds card spending;
+      // unfunded card spending is debt; any remaining shortfall is cash
+      // overspending. A net card refund (S_credit < 0) has nothing to fund,
+      // so the whole shortfall classifies cash-side.
+      const sCash = -cashHere;
+      const sCreditPos = creditHere < 0n ? -creditHere : 0n;
+      const fundedCredit = clamp(
+        carryover + assignedHere - sCash,
+        0n,
+        sCreditPos,
+      );
+      const creditOverspent = sCreditPos - fundedCredit;
+      const cashOverspent =
+        (available < 0n ? -available : 0n) - creditOverspent;
 
       categories.set(category.id, {
         assigned: assignedHere,
         activity: activityHere,
         carryover,
         available,
+        fundedCredit,
+        creditOverspent,
         cashOverspent,
       });
       previousAvailable.set(category.id, available);
-      overspentThisMonth += cashOverspent;
+      cashOverspentThisMonth += cashOverspent;
     }
 
     months.set(month, {
       month,
       categories,
-      readyToAssign: incomeAllTime - assignedAllMonths - overspentBefore,
+      readyToAssign: incomeAllTime - assignedAllMonths - cashOverspentBefore,
     });
-    overspentBefore += overspentThisMonth;
+    cashOverspentBefore += cashOverspentThisMonth;
   }
 
   return months;

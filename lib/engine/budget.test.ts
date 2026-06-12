@@ -13,11 +13,14 @@ import {
   type EngineTransaction,
 } from "@/lib/engine/budget";
 
-// PRD §4 budget math, cash only (Milestone 3). Credit classification (M4)
-// and card mechanics (M5) extend these cases; the §12 list is the contract.
+// PRD §4 budget math through Milestone 4: cash core plus overspending
+// classification (funded_credit / credit_overspent / cash_overspent). Card
+// payment-category mechanics land in M5; the §12 list is the contract.
 
 const CHECKING: EngineAccount = { id: "checking", type: "checking", onBudget: true };
 const SAVINGS: EngineAccount = { id: "savings", type: "savings", onBudget: true };
+const CARD: EngineAccount = { id: "card", type: "credit_card", onBudget: true };
+const CARD2: EngineAccount = { id: "card2", type: "credit_card", onBudget: true };
 const BROKERAGE: EngineAccount = {
   id: "brokerage",
   type: "tracking_asset",
@@ -101,6 +104,8 @@ describe("computeMonth — §4 core math", () => {
       carryover: 0n,
       available: 0n,
       cashOverspent: 0n,
+      fundedCredit: 0n,
+      creditOverspent: 0n,
     });
     expect(state.readyToAssign).toBe(500_000n);
   });
@@ -326,9 +331,279 @@ describe("computeBudget — month walker", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 invariant property test:
-//   Σ balances of cash accounts = RTA + Σ available(c, m) over all categories
-// holds at any month m with no transactions or assignments dated after it
+// §4 overspending classification (Milestone 4). Spends as positive numbers:
+//   A = carryover + assigned
+//   fundedCredit    = clamp(A − S_cash, 0, max(S_credit, 0))
+//   creditOverspent = max(S_credit, 0) − fundedCredit   (card debt; no RTA hit)
+//   cashOverspent   = max(−available, 0) − creditOverspent (docks later RTA)
+// The formulas are total: fundedCredit is meaningful even when not overspent
+// (it's the slice M5 moves to the card's payment category).
+// ---------------------------------------------------------------------------
+
+describe("computeMonth — §4 overspending classification", () => {
+  const cardInput = (partial: Partial<BudgetInput>) =>
+    makeInput({ accounts: [CHECKING, CARD], ...partial });
+
+  it("fully funded credit spend classifies the whole spend as funded", () => {
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 500_000n)],
+        transactions: [
+          income("2026-06-01", 1_000_000n),
+          txn("card", "2026-06-10", -300_000n, "groceries"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toEqual({
+      assigned: 500_000n,
+      activity: -300_000n,
+      carryover: 0n,
+      available: 200_000n,
+      cashOverspent: 0n,
+      fundedCredit: 300_000n,
+      creditOverspent: 0n,
+    });
+  });
+
+  it("unfunded credit overspending becomes debt and never docks RTA (§12)", () => {
+    const input = cardInput({
+      transactions: [
+        income("2026-06-01", 1_000_000n),
+        txn("card", "2026-06-15", -80_000n, "dining"),
+      ],
+    });
+    const june = computeMonth(input, JUNE);
+    expect(cat(june, "dining")).toMatchObject({
+      available: -80_000n,
+      fundedCredit: 0n,
+      creditOverspent: 80_000n,
+      cashOverspent: 0n,
+    });
+    expect(june.readyToAssign).toBe(1_000_000n);
+
+    const july = computeMonth(input, JULY);
+    expect(cat(july, "dining").carryover).toBe(0n);
+    expect(cat(july, "dining").available).toBe(0n);
+    expect(july.readyToAssign).toBe(1_000_000n);
+    expect(computeMonth(input, "2026-08-01").readyToAssign).toBe(1_000_000n);
+  });
+
+  it("partially funded credit spend funds only the available slice (§12)", () => {
+    const input = cardInput({
+      assignments: [assign("groceries", JUNE, 50_000n)],
+      transactions: [
+        income("2026-06-01", 500_000n),
+        txn("card", "2026-06-12", -80_000n, "groceries"),
+      ],
+    });
+    expect(cat(computeMonth(input, JUNE), "groceries")).toMatchObject({
+      available: -30_000n,
+      fundedCredit: 50_000n,
+      creditOverspent: 30_000n,
+      cashOverspent: 0n,
+    });
+    const july = computeMonth(input, JULY);
+    // 500 income − 50 assigned; the credit overspend is debt, not an RTA hit.
+    expect(july.readyToAssign).toBe(450_000n);
+    expect(cat(july, "groceries").available).toBe(0n);
+  });
+
+  it("mixed overspending docks RTA by only the cash share", () => {
+    const input = cardInput({
+      assignments: [assign("groceries", JUNE, 50_000n)],
+      transactions: [
+        income("2026-06-01", 500_000n),
+        txn("checking", "2026-06-05", -60_000n, "groceries"),
+        txn("card", "2026-06-06", -30_000n, "groceries"),
+      ],
+    });
+    expect(cat(computeMonth(input, JUNE), "groceries")).toMatchObject({
+      available: -40_000n,
+      fundedCredit: 0n, // clamp(50 − 60, 0, 30)
+      creditOverspent: 30_000n,
+      cashOverspent: 10_000n,
+    });
+    expect(computeMonth(input, JULY).readyToAssign).toBe(440_000n);
+  });
+
+  it("cash spending consumes available before credit gets funded", () => {
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 100_000n)],
+        transactions: [
+          income("2026-06-01", 500_000n),
+          txn("checking", "2026-06-08", -70_000n, "groceries"),
+          txn("card", "2026-06-09", -50_000n, "groceries"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toMatchObject({
+      available: -20_000n,
+      fundedCredit: 30_000n, // clamp(100 − 70, 0, 50)
+      creditOverspent: 20_000n,
+      cashOverspent: 0n,
+    });
+  });
+
+  it("a net card refund classifies the whole shortfall as cash overspending", () => {
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 10_000n)],
+        transactions: [
+          txn("checking", "2026-06-03", -30_000n, "groceries"),
+          txn("card", "2026-06-04", 5_000n, "groceries"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toMatchObject({
+      available: -15_000n,
+      fundedCredit: 0n, // S_credit < 0: nothing to fund or owe
+      creditOverspent: 0n,
+      cashOverspent: 15_000n,
+    });
+  });
+
+  it("a card refund reverses spending on a net basis within the month (§12)", () => {
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 50_000n)],
+        transactions: [
+          income("2026-06-01", 100_000n),
+          txn("card", "2026-06-10", -80_000n, "groceries"),
+          txn("card", "2026-06-20", 30_000n, "groceries"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toEqual({
+      assigned: 50_000n,
+      activity: -50_000n,
+      carryover: 0n,
+      available: 0n,
+      cashOverspent: 0n,
+      fundedCredit: 50_000n,
+      creditOverspent: 0n,
+    });
+  });
+
+  it("spending across multiple cards aggregates for classification", () => {
+    const state = computeMonth(
+      makeInput({
+        accounts: [CHECKING, CARD, CARD2],
+        assignments: [assign("dining", JUNE, 40_000n)],
+        transactions: [
+          txn("card", "2026-06-11", -30_000n, "dining"),
+          txn("card2", "2026-06-12", -30_000n, "dining"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "dining")).toMatchObject({
+      available: -20_000n,
+      fundedCredit: 40_000n,
+      creditOverspent: 20_000n,
+      cashOverspent: 0n,
+    });
+  });
+
+  it("split postings on a card classify per sub-category", () => {
+    const split: EngineTransaction = {
+      accountId: "card",
+      date: "2026-06-15",
+      amount: -80_000n,
+      categoryId: null,
+      subtransactions: [
+        { amount: -50_000n, categoryId: "groceries" },
+        { amount: -30_000n, categoryId: "dining" },
+      ],
+    };
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 20_000n)],
+        transactions: [split],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toMatchObject({
+      available: -30_000n,
+      fundedCredit: 20_000n,
+      creditOverspent: 30_000n,
+      cashOverspent: 0n,
+    });
+    expect(cat(state, "dining")).toMatchObject({
+      available: -30_000n,
+      fundedCredit: 0n,
+      creditOverspent: 30_000n,
+      cashOverspent: 0n,
+    });
+  });
+
+  it("assigning enough mid-month erases the overspending (derived, never stored)", () => {
+    const state = computeMonth(
+      cardInput({
+        assignments: [assign("groceries", JUNE, 80_000n)],
+        transactions: [
+          income("2026-06-01", 100_000n),
+          txn("card", "2026-06-10", -80_000n, "groceries"),
+        ],
+      }),
+      JUNE,
+    );
+    expect(cat(state, "groceries")).toMatchObject({
+      available: 0n,
+      fundedCredit: 80_000n,
+      creditOverspent: 0n,
+      cashOverspent: 0n,
+    });
+  });
+
+  it("cash overspending docks RTA once, from the following month onward", () => {
+    const input = makeInput({
+      assignments: [assign("groceries", MAY, 100_000n)],
+      transactions: [
+        income("2026-05-01", 1_000_000n),
+        txn("checking", "2026-05-20", -150_000n, "groceries"),
+      ],
+    });
+    expect(computeMonth(input, MAY).readyToAssign).toBe(900_000n);
+    expect(computeMonth(input, JUNE).readyToAssign).toBe(850_000n);
+    expect(computeMonth(input, JULY).readyToAssign).toBe(850_000n);
+  });
+
+  it("carryover funds next month's card spending before classifying debt", () => {
+    const input = cardInput({
+      assignments: [assign("groceries", MAY, 200_000n)],
+      transactions: [
+        income("2026-05-01", 500_000n),
+        txn("card", "2026-06-10", -250_000n, "groceries"),
+      ],
+    });
+    expect(cat(computeMonth(input, JUNE), "groceries")).toMatchObject({
+      carryover: 200_000n,
+      available: -50_000n,
+      fundedCredit: 200_000n,
+      creditOverspent: 50_000n,
+      cashOverspent: 0n,
+    });
+    const july = computeMonth(input, JULY);
+    expect(july.readyToAssign).toBe(300_000n);
+    expect(cat(july, "groceries").available).toBe(0n);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4 invariant property test, M4 form. Payment categories don't exist until
+// M5, so the funded slice of card spending isn't re-reserved as available
+// anywhere, and past credit overspending is card debt the budget stops
+// tracking. The exact identity without payment categories:
+//   Σ on-budget balances (cash + cards)
+//     = RTA(m) + Σ available(c, m) − Σ creditOverspent(months strictly < m)
+// It degenerates to the PRD form (Σ cash = RTA + Σ available) when no card
+// accounts exist; M5's payment-category moves restore the PRD form. Holds at
+// any month m with no transactions or assignments dated after it
 // (future-dated data shifts RTA/cash without touching available(m) — that is
 // §12's "future-month assignment reduces RTA today", not a bug).
 // ---------------------------------------------------------------------------
@@ -352,11 +627,22 @@ function randomScenario(rng: () => number) {
   const money = (minDollars: number, maxDollars: number) =>
     BigInt(int(minDollars * 100, maxDollars * 100)) * 10n;
 
+  // 1–3 cash accounts plus 0–2 credit cards; zero-card seeds keep the pure
+  // cash (M3) behavior in the tested mix. The transfer branch below then
+  // also emits cash↔card pairs (card payments / cash advances).
   const cashTypes = ["checking", "savings", "cash"] as const;
-  const accounts: EngineAccount[] = Array.from(
-    { length: int(2, 4) },
-    (_, i) => ({ id: `acct${i}`, type: pick(cashTypes), onBudget: true }),
-  );
+  const accounts: EngineAccount[] = [
+    ...Array.from({ length: int(1, 3) }, (_, i): EngineAccount => ({
+      id: `acct${i}`,
+      type: pick(cashTypes),
+      onBudget: true,
+    })),
+    ...Array.from({ length: int(0, 2) }, (_, i): EngineAccount => ({
+      id: `card${i}`,
+      type: "credit_card",
+      onBudget: true,
+    })),
+  ];
   const categories: EngineCategory[] = [
     { id: "rta", isReadyToAssign: true },
     ...Array.from({ length: int(4, 8) }, (_, i) => ({
@@ -426,15 +712,18 @@ function randomScenario(rng: () => number) {
 }
 
 describe("§4 engine invariant (property test)", () => {
-  it("cash balances = RTA + total available, for 150 random histories", () => {
+  it("on-budget balances = RTA + available − past credit overspending, for 150 random histories", () => {
     for (let seed = 0; seed < 150; seed++) {
       const rng = mulberry32(seed);
       const input = randomScenario(rng);
 
-      const cashTotal = input.transactions.reduce(
-        (sum, t) => sum + t.amount,
-        0n,
+      const onBudgetIds = new Set(
+        input.accounts.filter((a) => a.onBudget).map((a) => a.id),
       );
+      let balanceTotal = 0n;
+      for (const t of input.transactions) {
+        if (onBudgetIds.has(t.accountId)) balanceTotal += t.amount;
+      }
 
       const dataMonths = [
         ...input.transactions.map((t) => monthOfDate(t.date)),
@@ -443,23 +732,37 @@ describe("§4 engine invariant (property test)", () => {
       const last = dataMonths[dataMonths.length - 1] ?? "2026-06-01";
 
       for (const m of [last, nextMonth(last), nextMonth(nextMonth(last))]) {
-        const state = computeMonth(input, m);
+        const months = computeBudget(input, m);
+        const state = months.get(m);
+        if (!state) throw new Error(`no state for ${m}`);
         let availableTotal = 0n;
         for (const row of state.categories.values()) {
           availableTotal += row.available;
         }
-        const rhs = state.readyToAssign + availableTotal;
-        if (cashTotal !== rhs) {
+        let pastCreditOverspent = 0n;
+        for (const monthState of months.values()) {
+          if (monthState.month >= m) continue;
+          for (const row of monthState.categories.values()) {
+            pastCreditOverspent += row.creditOverspent;
+          }
+        }
+        const rhs =
+          state.readyToAssign + availableTotal - pastCreditOverspent;
+        if (balanceTotal !== rhs) {
           throw new Error(
             `invariant failed: seed=${seed} month=${m} ` +
-              `cash=${cashTotal} rta=${state.readyToAssign} available=${availableTotal}`,
+              `balances=${balanceTotal} rta=${state.readyToAssign} ` +
+              `available=${availableTotal} pastCreditOverspent=${pastCreditOverspent}`,
           );
         }
       }
     }
   });
 
-  it("per-month bookkeeping holds for 150 random histories", () => {
+  it("per-month bookkeeping and classification formulas hold for 150 random histories", () => {
+    const clamp = (v: bigint, lo: bigint, hi: bigint) =>
+      v < lo ? lo : v > hi ? hi : v;
+
     for (let seed = 0; seed < 150; seed++) {
       const input = randomScenario(mulberry32(seed));
       const dataMonths = [
@@ -469,15 +772,77 @@ describe("§4 engine invariant (property test)", () => {
       const last = dataMonths[dataMonths.length - 1] ?? "2026-06-01";
       const months = computeBudget(input, nextMonth(last));
 
+      // Independent oracle: net cash/credit activity per (month, category),
+      // re-bucketed from the raw input with §4's rules (on-budget accounts
+      // only, subs replace the parent, RTA/uncategorized postings excluded).
+      const onBudgetIds = new Set(
+        input.accounts.filter((a) => a.onBudget).map((a) => a.id),
+      );
+      const cardIds = new Set(
+        input.accounts
+          .filter((a) => a.onBudget && a.type === "credit_card")
+          .map((a) => a.id),
+      );
+      const rtaIds = new Set(
+        input.categories.filter((c) => c.isReadyToAssign).map((c) => c.id),
+      );
+      const cashActivity = new Map<string, bigint>(); // "month|category"
+      const creditActivity = new Map<string, bigint>();
+      for (const t of input.transactions) {
+        if (!onBudgetIds.has(t.accountId)) continue;
+        const into = cardIds.has(t.accountId) ? creditActivity : cashActivity;
+        const postings =
+          t.subtransactions !== undefined && t.subtransactions.length > 0
+            ? t.subtransactions
+            : [{ amount: t.amount, categoryId: t.categoryId }];
+        for (const posting of postings) {
+          if (posting.categoryId === null || rtaIds.has(posting.categoryId)) {
+            continue;
+          }
+          const key = `${monthOfDate(t.date)}|${posting.categoryId}`;
+          into.set(key, (into.get(key) ?? 0n) + posting.amount);
+        }
+      }
+
       let previous: ReturnType<typeof computeMonth> | null = null;
+      let previousCashOverspent = 0n;
       for (const state of months.values()) {
+        let cashOverspentHere = 0n;
         for (const [id, row] of state.categories) {
           if (row.available !== row.carryover + row.assigned + row.activity) {
             throw new Error(`available identity failed: seed=${seed} ${id}`);
           }
-          if (row.cashOverspent !== (row.available < 0n ? -row.available : 0n)) {
-            throw new Error(`overspent identity failed: seed=${seed} ${id}`);
+
+          // §4 classification against the oracle, spends as positives.
+          const key = `${state.month}|${id}`;
+          const sCash = -(cashActivity.get(key) ?? 0n);
+          const sCredit = -(creditActivity.get(key) ?? 0n);
+          const sCreditPos = sCredit > 0n ? sCredit : 0n;
+          const fundedCredit = clamp(
+            row.carryover + row.assigned - sCash,
+            0n,
+            sCreditPos,
+          );
+          const creditOverspent = sCreditPos - fundedCredit;
+          const overspentTotal = row.available < 0n ? -row.available : 0n;
+          if (row.fundedCredit !== fundedCredit) {
+            throw new Error(`fundedCredit failed: seed=${seed} ${id} ${state.month}`);
           }
+          if (row.creditOverspent !== creditOverspent) {
+            throw new Error(`creditOverspent failed: seed=${seed} ${id} ${state.month}`);
+          }
+          if (row.cashOverspent !== overspentTotal - creditOverspent) {
+            throw new Error(`cashOverspent failed: seed=${seed} ${id} ${state.month}`);
+          }
+          if (
+            row.fundedCredit < 0n ||
+            row.creditOverspent < 0n ||
+            row.cashOverspent < 0n
+          ) {
+            throw new Error(`negative classification: seed=${seed} ${id} ${state.month}`);
+          }
+          cashOverspentHere += row.cashOverspent;
+
           if (previous) {
             const before = previous.categories.get(id);
             const expected =
@@ -489,7 +854,19 @@ describe("§4 engine invariant (property test)", () => {
             }
           }
         }
+
+        // Only the cash share of overspending moves RTA, exactly one month on.
+        if (previous) {
+          const expectedRta = previous.readyToAssign - previousCashOverspent;
+          if (state.readyToAssign !== expectedRta) {
+            throw new Error(
+              `RTA linkage failed: seed=${seed} month=${state.month} ` +
+                `rta=${state.readyToAssign} expected=${expectedRta}`,
+            );
+          }
+        }
         previous = state;
+        previousCashOverspent = cashOverspentHere;
       }
     }
   });
