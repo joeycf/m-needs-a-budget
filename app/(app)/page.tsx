@@ -82,6 +82,8 @@ export default async function BudgetPage({
         assigned: row?.assigned ?? 0n,
         activity: row?.activity ?? 0n,
         available: row?.available ?? 0n,
+        isCreditOverspent:
+          (row?.creditOverspent ?? 0n) > 0n && (row?.cashOverspent ?? 0n) === 0n,
       };
     }),
   }));

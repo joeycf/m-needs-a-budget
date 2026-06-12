@@ -11,7 +11,7 @@ import {
 
 // Budget grid per budget-components.jsx BudgetTable: collapsible group rows
 // with sums, inline-editable Assigned, static Activity (click-through lands
-// with M7 polish), Available pill. Credit (yellow) pills appear with M5.
+// with M7 polish), Available pill (yellow = purely credit-overspent).
 
 function AssignedCell({
   value,
@@ -80,7 +80,9 @@ function CategoryRow({
     category.available > 0n
       ? "pill--funded"
       : category.available < 0n
-        ? "pill--cash"
+        ? category.isCreditOverspent
+          ? "pill--credit"
+          : "pill--cash"
         : "pill--zero";
   return (
     <tr>

@@ -22,9 +22,15 @@ export type QuickAssignMode =
   | "spentLastMonth"
   | "resetToZero";
 
-function MiniAvailablePill({ value }: { value: bigint }) {
+function MiniAvailablePill({ value, credit }: { value: bigint; credit: boolean }) {
   const pillClass =
-    value > 0n ? "pill--funded" : value < 0n ? "pill--cash" : "pill--zero";
+    value > 0n
+      ? "pill--funded"
+      : value < 0n
+        ? credit
+          ? "pill--credit"
+          : "pill--cash"
+        : "pill--zero";
   return (
     <span
       className={`pill ${pillClass} h-[18px] min-w-0 shrink-0 px-[7px] text-[11px]`}
@@ -72,7 +78,10 @@ function GroupedCategorySelect({
                 className="justify-between gap-4 text-(--text-table)"
               >
                 <span className="truncate">{category.name}</span>
-                <MiniAvailablePill value={category.available} />
+                <MiniAvailablePill
+                  value={category.available}
+                  credit={category.isCreditOverspent}
+                />
               </DropdownMenuItem>
             ))}
           </div>

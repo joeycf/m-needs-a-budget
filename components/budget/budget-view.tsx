@@ -23,6 +23,9 @@ export interface BudgetRowData {
   assigned: bigint;
   activity: bigint;
   available: bigint;
+  /** Negative available that is purely credit overspending (card debt) —
+   *  shown yellow; any cash share shows red (PRD §7). */
+  isCreditOverspent: boolean;
 }
 
 export interface BudgetGroupData {
