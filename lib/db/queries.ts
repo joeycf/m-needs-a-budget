@@ -6,12 +6,14 @@ import {
   budgets,
   categories,
   categoryGroups,
+  categoryMonths,
   payees,
   transactions,
   type Account,
   type Budget,
   type ClearedStatus,
 } from "@/lib/db/schema";
+import type { BudgetInput } from "@/lib/engine/budget";
 
 // Read helpers for the single-user budget. Balances are simple SQL sums
 // (allowed per PRD §4 note); all richer math stays in lib/engine.
@@ -144,6 +146,115 @@ export async function getPayeeOptions(budgetId: string): Promise<PayeeOption[]> 
       lastCategoryName: last?.categoryName ?? null,
     };
   });
+}
+
+/** Everything the budget engine needs, mapped to its pure input types.
+ *  Subtransactions can't exist before M6, so transactions ship bare. */
+export async function getBudgetEngineInput(
+  budgetId: string,
+): Promise<BudgetInput> {
+  const db = getDb();
+  const [accountRows, categoryRows, assignmentRows, txnRows] =
+    await Promise.all([
+      db
+        .select({ id: accounts.id, type: accounts.type, onBudget: accounts.onBudget })
+        .from(accounts)
+        .where(eq(accounts.budgetId, budgetId)),
+      db
+        .select({ id: categories.id, isSystem: categories.isSystem, name: categories.name })
+        .from(categories)
+        .where(eq(categories.budgetId, budgetId)),
+      db
+        .select({
+          categoryId: categoryMonths.categoryId,
+          month: categoryMonths.month,
+          assigned: categoryMonths.assigned,
+        })
+        .from(categoryMonths)
+        .innerJoin(categories, eq(categoryMonths.categoryId, categories.id))
+        .where(eq(categories.budgetId, budgetId)),
+      db
+        .select({
+          accountId: transactions.accountId,
+          date: transactions.date,
+          amount: transactions.amount,
+          categoryId: transactions.categoryId,
+        })
+        .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .where(and(eq(transactions.budgetId, budgetId), eq(accounts.onBudget, true))),
+    ]);
+
+  return {
+    accounts: accountRows,
+    categories: categoryRows.map((row) => ({
+      id: row.id,
+      isReadyToAssign: row.isSystem && row.name === "Ready to Assign",
+    })),
+    assignments: assignmentRows,
+    transactions: txnRows,
+  };
+}
+
+export interface BudgetGridCategory {
+  id: string;
+  name: string;
+}
+
+export interface BudgetGridGroup {
+  id: string;
+  name: string;
+  categories: BudgetGridCategory[];
+}
+
+/** Visible category groups for the budget grid, in sort order. The Internal
+ *  group (only the system RTA category) and empty system groups (Credit Card
+ *  Payments until M5) drop out. */
+export async function getBudgetGrid(
+  budgetId: string,
+): Promise<BudgetGridGroup[]> {
+  const db = getDb();
+  const [groupRows, categoryRows] = await Promise.all([
+    db
+      .select({
+        id: categoryGroups.id,
+        name: categoryGroups.name,
+        isSystem: categoryGroups.isSystem,
+      })
+      .from(categoryGroups)
+      .where(
+        and(eq(categoryGroups.budgetId, budgetId), eq(categoryGroups.hidden, false)),
+      )
+      .orderBy(asc(categoryGroups.sortOrder), asc(categoryGroups.name)),
+    db
+      .select({ id: categories.id, name: categories.name, groupId: categories.groupId })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.budgetId, budgetId),
+          eq(categories.hidden, false),
+          eq(categories.isSystem, false),
+        ),
+      )
+      .orderBy(asc(categories.sortOrder), asc(categories.name)),
+  ]);
+
+  const byGroup = new Map<string, BudgetGridCategory[]>();
+  for (const category of categoryRows) {
+    const list = byGroup.get(category.groupId) ?? [];
+    list.push({ id: category.id, name: category.name });
+    byGroup.set(category.groupId, list);
+  }
+
+  return groupRows
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      isSystem: group.isSystem,
+      categories: byGroup.get(group.id) ?? [],
+    }))
+    .filter((group) => !(group.isSystem && group.categories.length === 0))
+    .map(({ id, name, categories: cats }) => ({ id, name, categories: cats }));
 }
 
 export interface CategoryOption {
