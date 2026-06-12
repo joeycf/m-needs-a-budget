@@ -34,18 +34,20 @@ available(c, m) = carryover(c, m) + assigned(c, m) + activity(c, m)
 **Rollover & overspending rules.** Let, for category c in month m (treating spends as positive numbers):
 
 ```
-A        = carryover(c, m) + assigned(c, m)        // available before spending
-S_cash   = net cash-account outflow in c, m
-S_credit = net credit-card-account outflow in c, m
+A             = carryover(c, m) + assigned(c, m)   // available before spending
+S_cash        = net cash-account outflow in c, m
+S_credit      = net credit-card-account outflow in c, m
+S_credit_pos  = max(S_credit, 0)                   // a net card-refund month has no credit spend to classify
 available_end = A − S_cash − S_credit
 ```
 
 - `carryover(c, m+1) = max(available_end, 0)` — positive balances roll forward; negatives never roll forward inside the category.
 - If `available_end < 0`, classify the shortfall:
-  - `funded_credit = clamp(A − S_cash, 0, S_credit)`
-  - `credit_overspent = S_credit − funded_credit` (becomes card debt; no further effect)
+  - `funded_credit = clamp(A − S_cash, 0, S_credit_pos)`
+  - `credit_overspent = S_credit_pos − funded_credit` (becomes card debt; no further effect)
   - `cash_overspent = (−available_end) − credit_overspent`
 - All `cash_overspent` from months **before** the current month is subtracted from Ready to Assign (the money is gone, so it comes out of the unassigned pool).
+- Until Milestone 5 wires the credit-card payment-category moves, `credit_overspent` simply leaves the budget as untracked card debt.
 
 **Credit card mechanics.** When you spend on a credit card from a funded category, the cash you'd set aside must be reserved to pay the card:
 
