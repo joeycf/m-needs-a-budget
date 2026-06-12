@@ -1,0 +1,13 @@
+/* App-level wiring on top of the design tokens. The app is dark-theme
+   only (CLAUDE.md rule 9): layout.tsx pins data-theme="dark" (tokens)
+   plus the .dark class (shadcn + Tailwind dark: variants) on <html>. */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+}

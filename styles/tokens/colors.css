@@ -1,0 +1,151 @@
+/* M Needs A Budget — color tokens
+   Light mode only. Cool neutral grays, one deep teal accent,
+   four semantic money-state colors used EVERYWHERE. */
+
+:root {
+  /* ---- Neutrals (cool gray) ---- */
+  --gray-0:   #ffffff;
+  --gray-25:  #fafafb;
+  --gray-50:  #f4f5f6;
+  --gray-100: #ecedef;
+  --gray-200: #e2e4e7;
+  --gray-300: #cdd1d5;
+  --gray-400: #9aa0a6;
+  --gray-500: #6f757c;
+  --gray-600: #5b6168;
+  --gray-700: #3e444a;
+  --gray-800: #2a2f34;
+  --gray-900: #1b1e22;
+
+  /* ---- Accent: deep teal ---- */
+  --teal-50:  #e9f4f2;
+  --teal-100: #d2e9e6;
+  --teal-300: #7fbdb5;
+  --teal-600: #15756a;
+  --teal-700: #0e6159;
+  --teal-800: #0a4f48;
+
+  /* ---- Semantic money states (bg / fg pairs) ---- */
+  --funded-bg: #d9efdc;      /* Available > 0 */
+  --funded-fg: #196b3b;
+  --funded-strong: #197a41;  /* solid fills (RTA banner) — white text 5.4:1 */
+
+  --credit-overspent-bg: #f9ecc3;  /* overspent on credit */
+  --credit-overspent-fg: #7e5e0c;
+
+  --cash-overspent-bg: #f9dbd9;    /* overspent with cash */
+  --cash-overspent-fg: #ae2a22;
+  --cash-overspent-strong: #c0392f;
+
+  --zero-bg: #e8eaec;        /* Available = 0 */
+  --zero-fg: #5d646c;
+
+  /* ---- Semantic aliases ---- */
+  --bg-app: var(--gray-50);
+  --bg-surface: var(--gray-0);
+  --bg-raised: var(--gray-25);
+  --bg-hover: var(--gray-25);
+  --bg-selected: var(--teal-50);
+
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-row: var(--gray-100);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-400);
+  --text-on-fill: #ffffff;
+
+  --accent: var(--teal-600);
+  --accent-hover: var(--teal-700);
+  --accent-active: var(--teal-800);
+  --accent-subtle: var(--teal-50);
+
+  --inflow: var(--funded-fg);          /* positive amounts in registers */
+  --outflow: var(--text-primary);      /* outflows are plain, not red */
+
+  /* RTA banner fills */
+  --rta-positive: var(--funded-strong);
+  --rta-negative: var(--cash-overspent-strong);
+  --rta-zero: #6c7278;
+
+  --focus-ring: 0 0 0 2px var(--teal-100), 0 0 0 1px var(--teal-600);
+}
+
+/* ============================================================
+   Dark theme — apply data-theme="dark" to any subtree.
+   The neutral ramp flips (gray-0 stays "surface", gray-900 stays
+   "strongest text"), teal brightens one step, and the four money
+   states become tinted fills with high-contrast light text.
+   ============================================================ */
+
+[data-theme="dark"] {
+  /* ---- Neutrals (flipped ramp, warm-free dark grays) ---- */
+  --gray-0:   #20242a;  /* card / table surface */
+  --gray-25:  #262b31;  /* raised rows, hover */
+  --gray-50:  #141619;  /* app background — near black */
+  --gray-100: #2c3138;  /* group rows, ghost hover */
+  --gray-200: #343a41;  /* default borders */
+  --gray-300: #444b53;  /* strong borders */
+  --gray-400: #868d95;  /* muted text */
+  --gray-500: #99a0a8;
+  --gray-600: #aab1b8;  /* secondary text */
+  --gray-700: #c6ccd2;
+  --gray-800: #dde1e5;
+  --gray-900: #edeff1;  /* primary text */
+
+  /* ---- Teal accent, brightened for dark surfaces ---- */
+  --teal-50:  #15332e;  /* selection bg */
+  --teal-100: #1b443e;  /* focus ring inner */
+  --teal-300: #3f7d74;
+  --teal-600: #167c6e;  /* accent — white text 5.1:1 */
+  --teal-700: #1b8a7c;  /* hover */
+  --teal-800: #8fd3c8;  /* light teal — active-nav text, tab labels */
+  --accent-active: #126d60;
+
+  /* ---- Re-declared aliases ----
+     var() substitutes where a property is DECLARED, so the :root
+     aliases bake in light values. Re-declaring them here makes them
+     recompute against the flipped ramp above. */
+  --bg-app: var(--gray-50);
+  --bg-surface: var(--gray-0);
+  --bg-raised: var(--gray-25);
+  --bg-hover: var(--gray-25);
+  --bg-selected: var(--teal-50);
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-row: var(--gray-100);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-400);
+  --accent: var(--teal-600);
+  --accent-hover: var(--teal-700);
+  --accent-subtle: var(--teal-50);
+  --inflow: var(--funded-fg);
+  --outflow: var(--text-primary);
+
+  /* ---- Semantic money states (tinted fills, light text) ---- */
+  --funded-bg: #214330;
+  --funded-fg: #8fe2ab;
+  --funded-strong: #2ea35d;  /* legible as text on dark cards (4.8:1) */
+
+  --credit-overspent-bg: #4a3b10;
+  --credit-overspent-fg: #f0cf6f;
+
+  --cash-overspent-bg: #4a1f1c;
+  --cash-overspent-fg: #ffa399;
+  --cash-overspent-strong: #c0392f;
+
+  --zero-bg: #2c3138;
+  --zero-fg: #a6adb5;
+
+  /* ---- RTA banner fills (white text, all ≥ 4.5:1) ---- */
+  --rta-positive: #197a41;
+  --rta-negative: #c0392f;
+  --rta-zero: #5f656b;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-panel: -8px 0 24px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 2px var(--teal-100), 0 0 0 1px var(--teal-600);
+}

@@ -1,0 +1,46 @@
+/* M Needs A Budget — typography tokens
+   Inter everywhere. ALL money figures use tabular numerals (.num).
+   Inter is self-hosted via next/font (app/layout.tsx sets --font-inter)
+   instead of the handoff's Google Fonts @import. */
+
+:root {
+  --font-ui: var(--font-inter), -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  /* Compact, data-dense scale */
+  --text-xs: 11px;      /* table headers (uppercase), fine print */
+  --text-sm: 12px;      /* captions, secondary metadata */
+  --text-table: 13px;   /* table cells — the workhorse size */
+  --text-base: 14px;    /* default UI: buttons, inputs, labels */
+  --text-md: 16px;      /* group headers, panel titles */
+  --text-lg: 18px;      /* section titles */
+  --text-xl: 22px;      /* page title / month switcher */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.45;
+
+  --tracking-caps: 0.06em;  /* for uppercase table headers */
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Money + any column of figures: ALWAYS tabular */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  text-align: right;
+}
+
+.th-caps {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-secondary);
+}
