@@ -3,8 +3,23 @@ import { describe, expect, it } from "vitest";
 import {
   formatMilliunits,
   milliunitsToInput,
+  milliunitsToSignedInput,
   parseMoneyToMilliunits,
 } from "@/lib/money";
+
+describe("milliunitsToSignedInput", () => {
+  it("keeps the sign for editor round-trips", () => {
+    expect(milliunitsToSignedInput(600_000n)).toBe("600.00");
+    expect(milliunitsToSignedInput(-84_120n)).toBe("-84.12");
+    expect(milliunitsToSignedInput(0n)).toBe("0.00");
+  });
+
+  it("round-trips through parseMoneyToMilliunits", () => {
+    for (const value of [0n, 600_000n, -84_120n, 1_234_560n, -5n * 1000n]) {
+      expect(parseMoneyToMilliunits(milliunitsToSignedInput(value))).toBe(value);
+    }
+  });
+});
 
 describe("formatMilliunits", () => {
   it("formats zero", () => {

@@ -1,56 +1,107 @@
-import { count } from "drizzle-orm";
-
-import { logout } from "@/app/actions/auth";
+import { BudgetView } from "@/components/budget/budget-view";
 import { MobileTopBar } from "@/components/shell/mobile-top-bar";
-import { getDb } from "@/lib/db";
-import { budgets, categories, categoryGroups } from "@/lib/db/schema";
+import { formatMonthLabel, todayISO } from "@/lib/dates";
+import {
+  getBudget,
+  getBudgetEngineInput,
+  getBudgetGrid,
+} from "@/lib/db/queries";
+import {
+  computeMonth,
+  monthOfDate,
+  nextMonth,
+  prevMonth,
+} from "@/lib/engine/budget";
 
-// Placeholder home: the budget grid replaces this in Milestone 3.
-// Session is enforced by the (app) layout.
-export default async function HomePage() {
-  const db = getDb();
-  const [budget] = await db.select().from(budgets).limit(1);
-  const [groupCount] = await db.select({ value: count() }).from(categoryGroups);
-  const [categoryCount] = await db.select({ value: count() }).from(categories);
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])-01$/;
 
-  return (
-    <>
-      <MobileTopBar title="Budget" showLogo />
-      <main className="w-full max-w-2xl flex-1 p-6">
-        <header className="flex items-center justify-between gap-4">
-          <h1 className="text-(--text-xl) font-bold">
-            {budget?.name ?? "M Needs a Budget"}
-          </h1>
-          <form action={logout}>
-            <button type="submit" className="btn btn-secondary">
-              Sign out
-            </button>
-          </form>
-        </header>
+// Budget (home). All grid numbers are derived by the engine per request —
+// nothing is stored (iron rule 2). Session is enforced by the (app) layout.
+export default async function BudgetPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const { month: monthParam } = await searchParams;
 
-        {budget ? (
-          <section className="card mt-6 p-4">
-            <h2 className="th-caps">Milestone 2 — accounts &amp; register</h2>
-            <ul className="mt-2 space-y-1 text-(--text-table)">
-              <li>
-                Budget <span className="font-medium">{budget.name}</span> (
-                {budget.currency}) is seeded with {groupCount.value} category
-                groups and {categoryCount.value} categories.
-              </li>
-              <li>
-                Add accounts from the sidebar; each account gets a full
-                transaction register.
-              </li>
-              <li>The budget grid arrives in Milestone 3.</li>
-            </ul>
-          </section>
-        ) : (
-          <p className="mt-6 text-(--text-table) text-(--text-secondary)">
+  const budget = await getBudget();
+  if (!budget) {
+    return (
+      <>
+        <MobileTopBar title="Budget" showLogo />
+        <main className="w-full max-w-2xl flex-1 p-6">
+          <p className="text-(--text-table) text-(--text-secondary)">
             No budget found — run <code>npm run db:seed</code> to create the
             starter budget.
           </p>
-        )}
-      </main>
-    </>
+        </main>
+      </>
+    );
+  }
+
+  const [engineInput, grid] = await Promise.all([
+    getBudgetEngineInput(budget.id),
+    getBudgetGrid(budget.id),
+  ]);
+
+  // Navigable months: earliest data through next month (mock shows one
+  // month of lookahead); the ?month= param is clamped into that range.
+  const currentMonth = monthOfDate(todayISO());
+  const maxMonth = nextMonth(currentMonth);
+  let minMonth = currentMonth;
+  for (const txn of engineInput.transactions) {
+    const m = monthOfDate(txn.date);
+    if (m < minMonth) minMonth = m;
+  }
+  for (const assignment of engineInput.assignments) {
+    if (assignment.month < minMonth) minMonth = assignment.month;
+  }
+
+  const requested =
+    monthParam && MONTH_RE.test(monthParam) ? monthParam : currentMonth;
+  const month =
+    requested < minMonth ? minMonth : requested > maxMonth ? maxMonth : requested;
+
+  const state = computeMonth(engineInput, month);
+  const previous = computeMonth(engineInput, prevMonth(month));
+  // RTA is one global number (modern-YNAB): always today's, whatever
+  // month is being viewed. Overspending only hits it once a month ends.
+  const rta =
+    month === currentMonth
+      ? state.readyToAssign
+      : computeMonth(engineInput, currentMonth).readyToAssign;
+
+  const groups = grid.map((group) => ({
+    id: group.id,
+    name: group.name,
+    categories: group.categories.map((category) => {
+      const row = state.categories.get(category.id);
+      return {
+        id: category.id,
+        name: category.name,
+        assigned: row?.assigned ?? 0n,
+        activity: row?.activity ?? 0n,
+        available: row?.available ?? 0n,
+      };
+    }),
+  }));
+
+  let assignedLastMonth = 0n;
+  let spentLastMonth = 0n;
+  for (const row of previous.categories.values()) {
+    assignedLastMonth += row.assigned;
+    spentLastMonth += row.activity < 0n ? -row.activity : 0n;
+  }
+
+  return (
+    <BudgetView
+      month={month}
+      monthLabel={formatMonthLabel(month)}
+      minMonth={minMonth}
+      maxMonth={maxMonth}
+      rta={rta}
+      groups={groups}
+      autoTotals={{ assignedLastMonth, spentLastMonth }}
+    />
   );
 }

@@ -21,6 +21,12 @@ export function milliunitsToInput(milli: bigint): string {
   return `${abs / 1000n}.${cents}`;
 }
 
+/** Signed editor-field value for single-amount fields (budget Assigned
+ *  cell): -84120n → "-84.12". */
+export function milliunitsToSignedInput(milli: bigint): string {
+  return `${milli < 0n ? "-" : ""}${milliunitsToInput(milli)}`;
+}
+
 /** Parse user input ("$1,234.56", "-42.07", ".5") to milliunits without
  *  ever going through a float. Blank or malformed input returns null. */
 export function parseMoneyToMilliunits(input: string): bigint | null {

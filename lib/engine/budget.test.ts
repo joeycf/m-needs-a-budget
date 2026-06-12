@@ -32,7 +32,6 @@ const DINING: EngineCategory = { id: "dining", isReadyToAssign: false };
 const MAY = "2026-05-01";
 const JUNE = "2026-06-01";
 const JULY = "2026-07-01";
-const AUGUST = "2026-08-01";
 
 function makeInput(partial: Partial<BudgetInput> = {}): BudgetInput {
   return {
