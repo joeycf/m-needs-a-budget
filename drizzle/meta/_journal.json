@@ -8,6 +8,13 @@
       "when": 1781146163118,
       "tag": "0000_ordinary_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781323038476,
+      "tag": "0001_backfill_card_payment_categories",
+      "breakpoints": true
     }
   ]
 }
