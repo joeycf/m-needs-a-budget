@@ -414,6 +414,40 @@ describe("computeMonth — §4 overspending classification", () => {
     expect(computeMonth(input, "2026-08-01").readyToAssign).toBe(1_000_000n);
   });
 
+  it("crossing into next month clears both negatives, but only cash docks RTA", () => {
+    // Same month, two overspends: groceries on cash, dining on the card. Both
+    // available figures reset to 0 next month (negatives never carry), yet RTA
+    // drops by only the cash share — credit overspending is card debt, the
+    // cash never left, so it never touches the unassigned pool.
+    const input = cardInput({
+      transactions: [
+        income("2026-06-01", 1_000_000n),
+        txn("checking", "2026-06-10", -50_000n, "groceries"), // cash overspend
+        txn("card", "2026-06-12", -80_000n, "dining"), // credit overspend
+      ],
+    });
+
+    const june = computeMonth(input, JUNE);
+    expect(cat(june, "groceries")).toMatchObject({
+      available: -50_000n,
+      cashOverspent: 50_000n,
+      creditOverspent: 0n,
+    });
+    expect(cat(june, "dining")).toMatchObject({
+      available: -80_000n,
+      creditOverspent: 80_000n,
+      cashOverspent: 0n,
+    });
+    expect(june.readyToAssign).toBe(1_000_000n); // in-month: neither docks yet
+
+    const july = computeMonth(input, JULY);
+    // Both negatives cleared by the carryover clamp.
+    expect(cat(july, "groceries").available).toBe(0n);
+    expect(cat(july, "dining").available).toBe(0n);
+    // RTA docked by the $50 cash overspend only — not the $80 credit overspend.
+    expect(july.readyToAssign).toBe(950_000n);
+  });
+
   it("partially funded credit spend funds only the available slice (§12)", () => {
     const input = cardInput({
       assignments: [assign("groceries", JUNE, 50_000n)],
@@ -785,23 +819,27 @@ describe("computeMonth — §4 credit card payment mechanics", () => {
     });
   });
 
-  it("splits the move across cards greedily in account order", () => {
+  it("splits the move greedily in account order, not chronological or id order", () => {
+    // Account order is [card2, card], but "card" spends first chronologically
+    // and sorts first by id — so the funded slice landing on card2 first pins
+    // the split to account order specifically (the only order with this
+    // result; chronological or id order would fund card first).
     const state = computeMonth(
       makeInput({
-        accounts: [CHECKING, CARD, CARD2],
+        accounts: [CHECKING, CARD2, CARD],
         categories: [RTA, GROCERIES, DINING, CARD_PAY, CARD2_PAY],
         assignments: [assign("dining", JUNE, 40_000n)],
         transactions: [
-          txn("card", "2026-06-11", -30_000n, "dining"),
-          txn("card2", "2026-06-12", -30_000n, "dining"),
+          txn("card", "2026-06-11", -30_000n, "dining"), // earlier date, id "card"
+          txn("card2", "2026-06-20", -30_000n, "dining"), // later date, id "card2"
         ],
       }),
       JUNE,
     );
-    // fundedCredit 40 across two 30-spends: card first (30), then card2 (10).
+    // fundedCredit 40 across two 30-spends: card2 first (30), then card (10).
     expect(cat(state, "dining").fundedCredit).toBe(40_000n);
-    expect(cat(state, "cardpay").available).toBe(30_000n);
-    expect(cat(state, "card2pay").available).toBe(10_000n);
+    expect(cat(state, "card2pay").available).toBe(30_000n);
+    expect(cat(state, "cardpay").available).toBe(10_000n);
   });
 
   it("a refund on one card frees reserve toward another card's spend", () => {
