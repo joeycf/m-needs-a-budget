@@ -47,13 +47,14 @@ available_end = A − S_cash − S_credit
   - `credit_overspent = S_credit_pos − funded_credit` (becomes card debt; no further effect)
   - `cash_overspent = (−available_end) − credit_overspent`
 - All `cash_overspent` from months **before** the current month is subtracted from Ready to Assign (the money is gone, so it comes out of the unassigned pool).
-- Until Milestone 5 wires the credit-card payment-category moves, `credit_overspent` simply leaves the budget as untracked card debt.
+- `credit_overspent` (the unfunded slice) leaves the budget as untracked card debt; the funded slice is reserved on the card's payment category (see below).
 
 **Credit card mechanics.** When you spend on a credit card from a funded category, the cash you'd set aside must be reserved to pay the card:
 
-- Per (category, card, month), the **funded portion** of credit spending (`funded_credit` above, computed per card) is added as positive activity to that card's payment category. Unfunded credit spending moves nothing (it's overspending → debt).
-- Payments to the card are transfers `cash account → CC account`; the payment amount is negative activity on the card's payment category.
-- The payment category's Available = money reserved to pay that card. Refunds on the card naturally reverse the move because the rule operates on *net* spending per month.
+- Per (category, month), the amount moved to payment categories is `S_credit − credit_overspent` (the funded slice; equals `funded_credit` for a normal net-spend month, and `S_credit` itself — negative — in a net-refund month). It is split across the cards that posted to that category: a net-refund card reverses in full (negative move, pulling its refund back out of its payment category), and the remainder funds the net-spend cards greedily in account order, capped at each card's spend. With a single card this is just "the funded slice lands on that card's payment category"; unfunded spending moves nothing (overspending → debt).
+- Payments to the card are transfers `cash account → CC account`; the payment amount is negative activity on the card's payment category. The same routing covers card→card (balance transfer) and card→cash (cash advance): any transfer leg whose counterpart is a credit card posts its amount to that card's payment category.
+- A categorized inflow to **Ready to Assign on a card** (cash-back, a refund booked to income) raises RTA though no cash moved, so it mirrors `−amount` onto that card's payment category to keep the books balanced.
+- The payment category's Available = money reserved to pay that card. It carries no credit side of its own, so paying more than is reserved drives it negative and that shortfall is treated as `cash_overspent` (real cash left; it docks RTA next month). Refunds on the card naturally reverse the move because the rule operates on *net* spending per month.
 - Pre-existing card debt: user assigns money directly to the payment category.
 
 **Ready to Assign (single global number, modern-YNAB style).**
@@ -71,6 +72,14 @@ RTA = Σ inflows categorized to "Ready to Assign" (all on-budget accounts, all t
   = RTA + Σ available(c, current month) over all categories
          (including CC payment categories, including in-month negatives)
 ```
+
+Holds exactly in any month with no fresh unfunded card spending. In a month
+that *does* have unfunded card spending the cash side is short by that month's
+`Σ credit_overspent` (the cash never left, and next month's carryover clamp
+drops the negative from `available`), so the identity is
+`Σ cash = RTA + Σ available + Σ credit_overspent(current month)` and reduces to
+the form above once the month has passed. Property-test both: the residual form
+every month, and the verbatim form at months after the last data point.
 
 **Implementation note:** build the engine as pure TypeScript functions in `lib/engine/` that take `(transactions, assignments, accounts, categories, month)` and return computed state. No SQL-side math beyond simple sums. Months compute sequentially from the earliest transaction (carryover is recursive). Cache per-month results if needed later; correctness first.
 
