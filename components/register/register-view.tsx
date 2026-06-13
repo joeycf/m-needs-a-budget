@@ -201,11 +201,12 @@ export function RegisterView({
       accountId: mode === "account" ? account!.id : draft.accountId,
       date: draft.date,
       payeeName: draft.payeeName,
-      categoryId: draft.categoryId,
+      categoryId: draft.transferAccountId ? null : draft.categoryId,
       memo: draft.memo,
       outflow: draft.outflow,
       inflow: draft.inflow,
       cleared,
+      transferAccountId: draft.transferAccountId,
     });
   }
 

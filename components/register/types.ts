@@ -52,6 +52,9 @@ export interface TxnDraft {
   memo: string;
   outflow: string;
   inflow: string;
+  /** Set when a "Transfer : <account>" payee is chosen — makes this a transfer
+   *  to that account; the category column is locked to "Transfer". */
+  transferAccountId: string | null;
 }
 
 export function draftFromRow(row: RegisterRow): TxnDraft {
@@ -63,5 +66,6 @@ export function draftFromRow(row: RegisterRow): TxnDraft {
     memo: row.memo ?? "",
     outflow: row.amount < 0n ? milliunitsToInput(row.amount) : "",
     inflow: row.amount > 0n ? milliunitsToInput(row.amount) : "",
+    transferAccountId: null,
   };
 }

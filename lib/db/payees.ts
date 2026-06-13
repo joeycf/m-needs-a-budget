@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import type { Db } from "@/lib/db";
-import { payees } from "@/lib/db/schema";
+import { accounts, payees } from "@/lib/db/schema";
 
 // Works inside or outside a db.transaction.
 export type DbClient = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -31,6 +31,44 @@ export async function getOrCreatePayee(
   const [created] = await db
     .insert(payees)
     .values({ budgetId, name })
+    .returning({ id: payees.id });
+  return created.id;
+}
+
+/** The system transfer payee for an account ("Transfer : <name>",
+ *  transfer_account_id set), created on first use. Shown on the *other* side
+ *  of a transfer pair so the register reads "Transfer : <that account>". */
+export async function getOrCreateTransferPayee(
+  db: DbClient,
+  budgetId: string,
+  accountId: string,
+): Promise<string> {
+  const [existing] = await db
+    .select({ id: payees.id })
+    .from(payees)
+    .where(
+      and(
+        eq(payees.budgetId, budgetId),
+        eq(payees.transferAccountId, accountId),
+      ),
+    )
+    .limit(1);
+  if (existing) return existing.id;
+
+  const [account] = await db
+    .select({ name: accounts.name })
+    .from(accounts)
+    .where(eq(accounts.id, accountId))
+    .limit(1);
+  if (!account) throw new Error("transfer target account not found");
+
+  const [created] = await db
+    .insert(payees)
+    .values({
+      budgetId,
+      name: `Transfer : ${account.name}`,
+      transferAccountId: accountId,
+    })
     .returning({ id: payees.id });
   return created.id;
 }

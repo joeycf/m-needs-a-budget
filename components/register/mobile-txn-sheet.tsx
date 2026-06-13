@@ -107,6 +107,9 @@ function SheetForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     initial.categoryId,
   );
+  const [transferAccountId, setTransferAccountId] = useState<string | null>(
+    initial.transferAccountId,
+  );
   const [date, setDate] = useState(
     () => parseRegisterDate(initial.date) ?? todayISO(),
   );
@@ -123,11 +126,18 @@ function SheetForm({
 
   function changePayee(name: string) {
     setPayeeName(name);
-    if (categoryId === null) {
-      const match = payees.find(
-        (p) => p.name.toLowerCase() === name.trim().toLowerCase(),
-      );
-      if (match?.lastCategoryId) setCategoryId(match.lastCategoryId);
+    const match = payees.find(
+      (p) => p.name.toLowerCase() === name.trim().toLowerCase(),
+    );
+    if (match?.transferAccountId) {
+      // Picking a "Transfer : <account>" payee makes this a transfer.
+      setTransferAccountId(match.transferAccountId);
+      setCategoryId(null);
+      return;
+    }
+    setTransferAccountId(null);
+    if (categoryId === null && match?.lastCategoryId) {
+      setCategoryId(match.lastCategoryId);
     }
   }
 
@@ -150,10 +160,11 @@ function SheetForm({
         accountId,
         date,
         payeeName,
-        categoryId,
+        categoryId: transferAccountId ? null : categoryId,
         memo,
         outflow: flow === "outflow" ? amount : "",
         inflow: flow === "inflow" ? amount : "",
+        transferAccountId,
       };
       const result = await onSubmit(draft, cleared);
       if (!result.ok) {
@@ -232,13 +243,19 @@ function SheetForm({
             onChange={(e) => changePayee(e.target.value)}
           />
           <datalist id={datalistId}>
-            {payees.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
+            {payees
+              .filter((p) => p.transferAccountId !== accountId)
+              .map((p) => (
+                <option key={p.id} value={p.name} />
+              ))}
           </datalist>
         </SheetField>
         <SheetField label="Category">
-          {onBudget ? (
+          {transferAccountId ? (
+            <span className="text-(--text-base) font-medium text-(--text-muted)">
+              Transfer
+            </span>
+          ) : onBudget ? (
             <select
               className={fieldInput}
               value={categoryId ?? ""}

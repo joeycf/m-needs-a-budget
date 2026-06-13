@@ -60,9 +60,12 @@ export function TxnEditorRow({
     ? fixedAccount.onBudget
     : (accountOptions.find((a) => a.id === draft.accountId)?.onBudget ?? true);
 
+  const currentAccountId = fixedAccount?.id ?? draft.accountId;
   const suggestions = payees.filter(
     (p) =>
       draft.payeeName !== "" &&
+      // Can't transfer to the account you're already in.
+      p.transferAccountId !== currentAccountId &&
       p.name.toLowerCase().includes(draft.payeeName.toLowerCase()) &&
       p.name.toLowerCase() !== draft.payeeName.toLowerCase(),
   );
@@ -71,7 +74,11 @@ export function TxnEditorRow({
     setDraft((d) => ({
       ...d,
       payeeName: payee.name,
-      categoryId: d.categoryId ?? payee.lastCategoryId,
+      transferAccountId: payee.transferAccountId,
+      // A transfer has no category; a plain payee fills its last category.
+      categoryId: payee.transferAccountId
+        ? null
+        : (d.categoryId ?? payee.lastCategoryId),
     }));
     setPayeeOpen(false);
   }
@@ -159,7 +166,12 @@ export function TxnEditorRow({
             placeholder="Payee"
             value={draft.payeeName}
             onChange={(e) => {
-              set("payeeName", e.target.value);
+              // Editing the payee text drops any transfer link.
+              setDraft((d) => ({
+                ...d,
+                payeeName: e.target.value,
+                transferAccountId: null,
+              }));
               setPayeeOpen(true);
             }}
             onBlur={() => setTimeout(() => setPayeeOpen(false), 150)}
@@ -184,7 +196,14 @@ export function TxnEditorRow({
           ) : null}
         </td>
         <td className="w-[160px]">
-          {onBudget ? (
+          {draft.transferAccountId ? (
+            <MiniSelect
+              value={null}
+              options={[]}
+              onChange={() => {}}
+              fixed="Transfer"
+            />
+          ) : onBudget ? (
             <MiniSelect
               value={draft.categoryId}
               options={categoryOptions}
@@ -292,5 +311,6 @@ export function emptyDraft(accountId: string, todayIso: string): TxnDraft {
     memo: "",
     outflow: "",
     inflow: "",
+    transferAccountId: null,
   };
 }

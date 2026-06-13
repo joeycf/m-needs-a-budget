@@ -168,15 +168,17 @@ export function RegisterToolbar({
           <DropdownMenuRadioItem value="all" className={radioItemClass}>
             All payees
           </DropdownMenuRadioItem>
-          {payees.map((p) => (
-            <DropdownMenuRadioItem
-              key={p.id}
-              value={p.id}
-              className={radioItemClass}
-            >
-              {p.name}
-            </DropdownMenuRadioItem>
-          ))}
+          {payees
+            .filter((p) => p.transferAccountId === null)
+            .map((p) => (
+              <DropdownMenuRadioItem
+                key={p.id}
+                value={p.id}
+                className={radioItemClass}
+              >
+                {p.name}
+              </DropdownMenuRadioItem>
+            ))}
         </DropdownMenuRadioGroup>
       </ChipMenu>
 

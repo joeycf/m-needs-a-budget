@@ -100,17 +100,34 @@ export interface PayeeOption {
   name: string;
   lastCategoryId: string | null;
   lastCategoryName: string | null;
+  /** Set on the synthesized "Transfer : <account>" options — picking one makes
+   *  the transaction a transfer to that account rather than a payee posting. */
+  transferAccountId: string | null;
 }
 
 /** Non-transfer payees with their most recently used category (derived,
- *  never stored — PRD §5) for autocomplete pre-fill. */
+ *  never stored — PRD §5) for autocomplete pre-fill, followed by a synthesized
+ *  "Transfer : <account>" option per open on-budget account (M5 transfers). */
 export async function getPayeeOptions(budgetId: string): Promise<PayeeOption[]> {
   const db = getDb();
-  const payeeRows = await db
-    .select({ id: payees.id, name: payees.name })
-    .from(payees)
-    .where(and(eq(payees.budgetId, budgetId), isNull(payees.transferAccountId)))
-    .orderBy(asc(payees.name));
+  const [payeeRows, transferAccounts] = await Promise.all([
+    db
+      .select({ id: payees.id, name: payees.name })
+      .from(payees)
+      .where(and(eq(payees.budgetId, budgetId), isNull(payees.transferAccountId)))
+      .orderBy(asc(payees.name)),
+    db
+      .select({ id: accounts.id, name: accounts.name })
+      .from(accounts)
+      .where(
+        and(
+          eq(accounts.budgetId, budgetId),
+          eq(accounts.onBudget, true),
+          eq(accounts.closed, false),
+        ),
+      )
+      .orderBy(asc(accounts.name)),
+  ]);
 
   const categorized = await db
     .select({
@@ -138,18 +155,28 @@ export async function getPayeeOptions(budgetId: string): Promise<PayeeOption[]> 
     }
   }
 
-  return payeeRows.map((payee) => {
+  const regular: PayeeOption[] = payeeRows.map((payee) => {
     const last = lastByPayee.get(payee.id);
     return {
       ...payee,
       lastCategoryId: last?.categoryId ?? null,
       lastCategoryName: last?.categoryName ?? null,
+      transferAccountId: null,
     };
   });
+  const transfers: PayeeOption[] = transferAccounts.map((account) => ({
+    id: `transfer:${account.id}`,
+    name: `Transfer : ${account.name}`,
+    lastCategoryId: null,
+    lastCategoryName: null,
+    transferAccountId: account.id,
+  }));
+  return [...regular, ...transfers];
 }
 
 /** Everything the budget engine needs, mapped to its pure input types.
- *  Subtransactions can't exist before M6, so transactions ship bare. */
+ *  Subtransactions can't exist before M6, so transactions ship bare; transfer
+ *  legs carry transfer_account_id so the engine can route card payments. */
 export async function getBudgetEngineInput(
   budgetId: string,
 ): Promise<BudgetInput> {
@@ -161,7 +188,12 @@ export async function getBudgetEngineInput(
         .from(accounts)
         .where(eq(accounts.budgetId, budgetId)),
       db
-        .select({ id: categories.id, isSystem: categories.isSystem, name: categories.name })
+        .select({
+          id: categories.id,
+          isSystem: categories.isSystem,
+          name: categories.name,
+          linkedAccountId: categories.linkedAccountId,
+        })
         .from(categories)
         .where(eq(categories.budgetId, budgetId)),
       db
@@ -179,6 +211,7 @@ export async function getBudgetEngineInput(
           date: transactions.date,
           amount: transactions.amount,
           categoryId: transactions.categoryId,
+          transferAccountId: transactions.transferAccountId,
         })
         .from(transactions)
         .innerJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -190,6 +223,7 @@ export async function getBudgetEngineInput(
     categories: categoryRows.map((row) => ({
       id: row.id,
       isReadyToAssign: row.isSystem && row.name === "Ready to Assign",
+      linkedAccountId: row.linkedAccountId,
     })),
     assignments: assignmentRows,
     transactions: txnRows,
@@ -265,7 +299,9 @@ export interface CategoryOption {
 }
 
 /** Register category choices: Ready to Assign first (income), then visible
- *  categories in group/sort order. */
+ *  categories in group/sort order. Payment categories are excluded — card
+ *  spending is categorized to a normal category; the engine moves the funded
+ *  slice to the payment category, you never post to it directly. */
 export async function getCategoryOptions(
   budgetId: string,
 ): Promise<CategoryOption[]> {
@@ -284,6 +320,7 @@ export async function getCategoryOptions(
         eq(categories.budgetId, budgetId),
         eq(categories.hidden, false),
         eq(categoryGroups.hidden, false),
+        isNull(categories.linkedAccountId),
       ),
     )
     .orderBy(asc(categoryGroups.sortOrder), asc(categories.sortOrder));

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth/require-session";
 import { parseRegisterDate } from "@/lib/dates";
 import { getDb } from "@/lib/db";
-import { getOrCreatePayee } from "@/lib/db/payees";
+import { getOrCreatePayee, getOrCreateTransferPayee } from "@/lib/db/payees";
 import { getBudget } from "@/lib/db/queries";
 import { accounts, categories, transactions } from "@/lib/db/schema";
 import { parseMoneyToMilliunits } from "@/lib/money";
@@ -106,7 +106,32 @@ async function resolveTxnTarget(
 
 const createTxnSchema = txnFieldsSchema.extend({
   cleared: z.boolean().default(false),
+  // Set → this is a transfer to that account; payee/category are ignored.
+  transferAccountId: z.uuid().nullable().default(null),
 });
+
+/** Loads an account and requires it to be an open on-budget account — the
+ *  only transfer endpoints M5 supports (tracking transfers arrive in M6). */
+async function loadOpenOnBudgetAccount(
+  budgetId: string,
+  accountId: string,
+): Promise<{ id: string } | { error: string }> {
+  const db = getDb();
+  const [account] = await db
+    .select({
+      id: accounts.id,
+      onBudget: accounts.onBudget,
+      closed: accounts.closed,
+    })
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.budgetId, budgetId)));
+  if (!account) return { error: "Account not found." };
+  if (account.closed) return { error: "This account is closed." };
+  if (!account.onBudget) {
+    return { error: "Transfers to tracking accounts aren't supported yet." };
+  }
+  return { id: account.id };
+}
 
 export async function createTransaction(
   input: unknown,
@@ -120,10 +145,70 @@ export async function createTransaction(
 
   const amount = resolveAmount(parsed.data);
   if (typeof amount === "object") return { ok: false, ...amount };
+
+  const db = getDb();
+
+  // Transfer: a linked pair of mirrored, uncategorized rows between two open
+  // on-budget accounts, each side naming the other's transfer payee (iron
+  // rule 4 — both written in one DB transaction).
+  if (parsed.data.transferAccountId !== null) {
+    const date = parseRegisterDate(parsed.data.date);
+    if (!date) return { ok: false, error: "Enter the date like 06/11/2026." };
+    const source = await loadOpenOnBudgetAccount(budget.id, parsed.data.accountId);
+    if ("error" in source) return { ok: false, error: source.error };
+    const dest = await loadOpenOnBudgetAccount(
+      budget.id,
+      parsed.data.transferAccountId,
+    );
+    if ("error" in dest) return { ok: false, error: dest.error };
+    if (source.id === dest.id) {
+      return { ok: false, error: "Pick a different account to transfer to." };
+    }
+
+    const memo = parsed.data.memo === "" ? null : parsed.data.memo;
+    await db.transaction(async (tx) => {
+      const [from] = await tx
+        .insert(transactions)
+        .values({
+          budgetId: budget.id,
+          accountId: source.id,
+          date,
+          amount,
+          payeeId: await getOrCreateTransferPayee(tx, budget.id, dest.id),
+          categoryId: null,
+          memo,
+          cleared: parsed.data.cleared ? "cleared" : "uncleared",
+          transferAccountId: dest.id,
+        })
+        .returning({ id: transactions.id });
+      const [to] = await tx
+        .insert(transactions)
+        .values({
+          budgetId: budget.id,
+          accountId: dest.id,
+          date,
+          amount: -amount,
+          payeeId: await getOrCreateTransferPayee(tx, budget.id, source.id),
+          categoryId: null,
+          memo,
+          cleared: "uncleared",
+          transferAccountId: source.id,
+          transferTransactionId: from.id,
+        })
+        .returning({ id: transactions.id });
+      await tx
+        .update(transactions)
+        .set({ transferTransactionId: to.id })
+        .where(eq(transactions.id, from.id));
+    });
+
+    revalidatePath("/", "layout");
+    return { ok: true };
+  }
+
   const target = await resolveTxnTarget(budget.id, parsed.data);
   if ("error" in target) return { ok: false, error: target.error };
 
-  const db = getDb();
   await db.transaction(async (tx) => {
     await tx.insert(transactions).values({
       budgetId: budget.id,
@@ -225,11 +310,24 @@ export async function deleteTransaction(
     .from(transactions)
     .where(eq(transactions.id, parsed.data.id));
   if (!existing) return { ok: false, error: "Transaction not found." };
-  if (existing.transferTransactionId !== null) {
-    return { ok: false, error: "Transfers can't be deleted yet." };
-  }
 
-  await db.delete(transactions).where(eq(transactions.id, existing.id));
+  // Deleting one side of a transfer deletes both (iron rule 4). Null the
+  // self-referential links first so neither delete trips the FK.
+  await db.transaction(async (tx) => {
+    const otherId = existing.transferTransactionId;
+    if (otherId !== null) {
+      await tx
+        .update(transactions)
+        .set({ transferTransactionId: null })
+        .where(eq(transactions.id, existing.id));
+      await tx
+        .update(transactions)
+        .set({ transferTransactionId: null })
+        .where(eq(transactions.id, otherId));
+      await tx.delete(transactions).where(eq(transactions.id, otherId));
+    }
+    await tx.delete(transactions).where(eq(transactions.id, existing.id));
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
