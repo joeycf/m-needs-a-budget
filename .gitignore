@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local YNAB export + generated import reports — never commit financial data
+/data/
+
+# Claude Code scratch (worktrees, plans, local settings)
+/.claude/

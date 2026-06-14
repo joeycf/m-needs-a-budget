@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Design handoff reference files (browser-global JSX, not app code).
     "docs/**",
+    // Claude Code scratch space: worktrees (with their own built .next),
+    // plans, memory — tooling artifacts, never source.
+    ".claude/**",
   ]),
 ]);
 
