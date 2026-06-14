@@ -8,12 +8,13 @@ import {
   categoryGroups,
   categoryMonths,
   payees,
+  subtransactions,
   transactions,
   type Account,
   type Budget,
   type ClearedStatus,
 } from "@/lib/db/schema";
-import type { BudgetInput } from "@/lib/engine/budget";
+import type { BudgetInput, EngineSubtransaction } from "@/lib/engine/budget";
 
 // Read helpers for the single-user budget. Balances are simple SQL sums
 // (allowed per PRD §4 note); all richer math stays in lib/engine.
@@ -174,14 +175,15 @@ export async function getPayeeOptions(budgetId: string): Promise<PayeeOption[]> 
   return [...regular, ...transfers];
 }
 
-/** Everything the budget engine needs, mapped to its pure input types.
- *  Subtransactions can't exist before M6, so transactions ship bare; transfer
- *  legs carry transfer_account_id so the engine can route card payments. */
+/** Everything the budget engine needs, mapped to its pure input types. Split
+ *  parents carry their subtransactions so the engine attributes activity per
+ *  sub-category (matches scripts/import-ynab.ts's validator); transfer legs
+ *  carry transfer_account_id so the engine can route card payments. */
 export async function getBudgetEngineInput(
   budgetId: string,
 ): Promise<BudgetInput> {
   const db = getDb();
-  const [accountRows, categoryRows, assignmentRows, txnRows] =
+  const [accountRows, categoryRows, assignmentRows, txnRows, subRows] =
     await Promise.all([
       db
         .select({ id: accounts.id, type: accounts.type, onBudget: accounts.onBudget })
@@ -207,6 +209,7 @@ export async function getBudgetEngineInput(
         .where(eq(categories.budgetId, budgetId)),
       db
         .select({
+          id: transactions.id,
           accountId: transactions.accountId,
           date: transactions.date,
           amount: transactions.amount,
@@ -216,7 +219,26 @@ export async function getBudgetEngineInput(
         .from(transactions)
         .innerJoin(accounts, eq(transactions.accountId, accounts.id))
         .where(and(eq(transactions.budgetId, budgetId), eq(accounts.onBudget, true))),
+      // Subtransactions of split parents, scoped to the same on-budget accounts.
+      db
+        .select({
+          transactionId: subtransactions.transactionId,
+          amount: subtransactions.amount,
+          categoryId: subtransactions.categoryId,
+        })
+        .from(subtransactions)
+        .innerJoin(transactions, eq(subtransactions.transactionId, transactions.id))
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .where(and(eq(transactions.budgetId, budgetId), eq(accounts.onBudget, true))),
     ]);
+
+  const subsByParent = new Map<string, EngineSubtransaction[]>();
+  for (const row of subRows) {
+    const entry = { amount: row.amount, categoryId: row.categoryId };
+    const list = subsByParent.get(row.transactionId);
+    if (list) list.push(entry);
+    else subsByParent.set(row.transactionId, [entry]);
+  }
 
   return {
     accounts: accountRows,
@@ -226,7 +248,17 @@ export async function getBudgetEngineInput(
       linkedAccountId: row.linkedAccountId,
     })),
     assignments: assignmentRows,
-    transactions: txnRows,
+    transactions: txnRows.map((row) => {
+      const subs = subsByParent.get(row.id);
+      return {
+        accountId: row.accountId,
+        date: row.date,
+        amount: row.amount,
+        categoryId: row.categoryId,
+        transferAccountId: row.transferAccountId,
+        ...(subs ? { subtransactions: subs } : {}),
+      };
+    }),
   };
 }
 
